@@ -80,6 +80,7 @@ If you can safely and confidently fulfill the request:
 {
   "success": true,
   "code": "your complete JS as a single string with \\n for newlines",
+  "css": "the equivalent CSS styles to inject (e.g., '#masthead { position: fixed !important; }'), or an empty string if it cannot be achieved via CSS",
   "summary": "one concise sentence describing what this change does",
   "reversalCode": "your complete reversal JS as a single string"
 }
@@ -178,12 +179,30 @@ User request: "${userPrompt}"`;
     }
 
     // Parse Response
+    let cleanText = rawText.trim();
+    if (cleanText.startsWith('```')) {
+      cleanText = cleanText.replace(/^```(?:json)?\s*/i, '');
+      cleanText = cleanText.replace(/\s*```$/, '');
+    }
+    cleanText = cleanText.trim();
+
     let parsed;
     try {
-      parsed = JSON.parse(rawText.trim());
+      parsed = JSON.parse(cleanText);
     } catch (e) {
-      console.error('Failed to parse Gemini response as JSON:', rawText);
-      return { success: false, reason: 'AI returned invalid JSON formatting. Please try again.' };
+      // Fallback: try regex match for JSON block
+      const match = cleanText.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          parsed = JSON.parse(match[0]);
+        } catch (e2) {
+          console.error('Failed to parse matched JSON block:', match[0]);
+          return { success: false, reason: 'AI returned invalid JSON formatting. Please try again.' };
+        }
+      } else {
+        console.error('Failed to parse Gemini response as JSON:', rawText);
+        return { success: false, reason: 'AI returned invalid JSON formatting. Please try again.' };
+      }
     }
 
     if (!parsed.success) {
@@ -195,6 +214,11 @@ User request: "${userPrompt}"`;
       return { success: false, reason: 'The generated code contained potentially unsafe operations and was blocked. Try rephrasing your request.' };
     }
 
+    // Read existing stack length to determine index
+    const domainData = await chrome.storage.local.get([domain]);
+    const stack = domainData[domain] || [];
+    const changeIndex = stack.length;
+
     // Send code live to page
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.id) {
@@ -202,20 +226,42 @@ User request: "${userPrompt}"`;
     }
 
     try {
-      await chrome.tabs.sendMessage(tab.id, { type: 'APPLY_CHANGE', code: parsed.code });
+      await chrome.tabs.sendMessage(tab.id, { 
+        type: 'APPLY_CHANGE', 
+        code: parsed.code,
+        css: parsed.css || '',
+        index: changeIndex
+      });
     } catch (e) {
       console.warn('Could not message content script, applying manually via Scripting API if allowed', e);
-      // Fallback: Use scripting API if activeTab permission permits it
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: (codeString) => {
-          const s = document.createElement('script');
-          s.textContent = codeString;
-          (document.body || document.documentElement).appendChild(s);
-          s.remove();
-        },
-        args: [parsed.code]
-      });
+      if (parsed.css) {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (cssCode, idx) => {
+            const id = `change-ext-style-${idx}`;
+            let style = document.getElementById(id);
+            if (!style) {
+              style = document.createElement('style');
+              style.id = id;
+              (document.head || document.documentElement).appendChild(style);
+            }
+            style.textContent = cssCode;
+          },
+          args: [parsed.css, changeIndex]
+        });
+      } else {
+        // Fallback: Use scripting API if activeTab permission permits it
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (codeString) => {
+            const s = document.createElement('script');
+            s.textContent = codeString;
+            (document.body || document.documentElement).appendChild(s);
+            s.remove();
+          },
+          args: [parsed.code]
+        });
+      }
     }
 
     // Reversal Code Safety Check
@@ -225,11 +271,10 @@ User request: "${userPrompt}"`;
       : '/* reversal unavailable — reload the page to reset */';
 
     // Save change to stack
-    const domainData = await chrome.storage.local.get([domain]);
-    const stack = domainData[domain] || [];
     const changeObject = {
       summary: parsed.summary || 'Custom layout adjustment',
       code: parsed.code,
+      css: parsed.css || '',
       reversalCode: safeReversalCode,
       reversalAvailable: reversalSafe,
       timestamp: new Date().toISOString(),
@@ -239,7 +284,7 @@ User request: "${userPrompt}"`;
     stack.push(changeObject);
     await chrome.storage.local.set({ [domain]: stack });
 
-    return { success: true, summary: changeObject.summary, changeIndex: stack.length - 1 };
+    return { success: true, summary: changeObject.summary, changeIndex: changeIndex };
 
   } catch (err) {
     console.error('API call exception:', err);
@@ -265,19 +310,35 @@ async function handleUndoChange({ domain, index }) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab && tab.id) {
     try {
-      await chrome.tabs.sendMessage(tab.id, { type: 'APPLY_CHANGE', code: changeToUndo.reversalCode });
+      await chrome.tabs.sendMessage(tab.id, { 
+        type: 'UNDO_CHANGE', 
+        index: index,
+        isCss: !!changeToUndo.css,
+        reversalCode: changeToUndo.reversalCode 
+      });
     } catch (e) {
       console.warn('Could not send undo message to content script, falling back to scripting API', e);
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: (codeString) => {
-          const s = document.createElement('script');
-          s.textContent = codeString;
-          (document.body || document.documentElement).appendChild(s);
-          s.remove();
-        },
-        args: [changeToUndo.reversalCode]
-      });
+      if (changeToUndo.css) {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (idx) => {
+            const style = document.getElementById(`change-ext-style-${idx}`);
+            if (style) style.remove();
+          },
+          args: [index]
+        });
+      } else {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (codeString) => {
+            const s = document.createElement('script');
+            s.textContent = codeString;
+            (document.body || document.documentElement).appendChild(s);
+            s.remove();
+          },
+          args: [changeToUndo.reversalCode]
+        });
+      }
     }
   }
 

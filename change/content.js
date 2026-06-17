@@ -1,6 +1,6 @@
 // Change Chrome Extension - Content Script
 
-// --- 1. SCRIPT INJECTION HELPER ---
+// --- 1. SCRIPT/CSS INJECTION HELPERS ---
 function injectScript(code) {
   try {
     const script = document.createElement('script');
@@ -12,6 +12,32 @@ function injectScript(code) {
   }
 }
 
+function injectCSS(cssCode, index) {
+  try {
+    const id = `change-ext-style-${index}`;
+    let style = document.getElementById(id);
+    if (!style) {
+      style = document.createElement('style');
+      style.id = id;
+      (document.head || document.documentElement).appendChild(style);
+    }
+    style.textContent = cssCode;
+  } catch (error) {
+    console.error('Change Extension: CSS injection failed:', error);
+  }
+}
+
+function removeCSS(index) {
+  try {
+    const style = document.getElementById(`change-ext-style-${index}`);
+    if (style) {
+      style.remove();
+    }
+  } catch (error) {
+    console.error('Change Extension: CSS removal failed:', error);
+  }
+}
+
 // --- 2. APPLY OVERRIDES ON LOAD ---
 function applySavedOverrides() {
   const domain = window.location.hostname;
@@ -19,8 +45,10 @@ function applySavedOverrides() {
     const stack = result[domain];
     if (stack && Array.isArray(stack)) {
       console.log(`Change Extension: Applying ${stack.length} saved overrides for ${domain}`);
-      stack.forEach((change) => {
-        if (change.code) {
+      stack.forEach((change, index) => {
+        if (change.css) {
+          injectCSS(change.css, index);
+        } else if (change.code) {
           injectScript(change.code);
         }
       });
@@ -33,6 +61,7 @@ applySavedOverrides();
 
 // --- 3. DOM SKELETON EXTRACTOR ---
 function isDynamicClass(cls) {
+  if (/[:/\[\]%]/.test(cls)) return true; // Filter out tailwind classes with special characters
   if (/^[a-zA-Z]{1,3}\d{3,}/.test(cls)) return true;
   if (/^[a-zA-Z0-9_-]{12,}$/.test(cls) && /\d/.test(cls)) return true;
   if (/^css-[a-zA-Z0-9]+$/.test(cls)) return true;
@@ -121,8 +150,19 @@ function getDOMSkeleton() {
 // --- 4. MESSAGE LISTENER ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'APPLY_CHANGE') {
-    injectScript(message.code);
+    if (message.css) {
+      injectCSS(message.css, message.index);
+    } else if (message.code) {
+      injectScript(message.code);
+    }
     sendResponse({ success: true, type: 'CHANGE_APPLIED' });
+  } else if (message.type === 'UNDO_CHANGE') {
+    if (message.isCss) {
+      removeCSS(message.index);
+    } else {
+      injectScript(message.reversalCode);
+    }
+    sendResponse({ success: true });
   } else if (message.type === 'GET_SKELETON') {
     const skeleton = getDOMSkeleton();
     sendResponse({ success: true, type: 'SKELETON_RESPONSE', skeleton });
