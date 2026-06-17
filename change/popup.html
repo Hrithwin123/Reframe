@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Change</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-logo">
+        <div class="logo-box">
+          <svg class="logo-icon" viewBox="0 0 24 24">
+            <path d="M12 4a8 8 0 1 0 8 8" />
+            <path d="M16 4h4v4" />
+            <path d="M20 4L14 10" />
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-title">Change</span>
+          <span id="active-domain" class="logo-subtitle">Detecting site...</span>
+        </div>
+      </div>
+      <button id="options-btn" class="icon-btn" title="Open Settings">
+        <svg class="icon-svg" viewBox="0 0 24 24">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+    </header>
+
+    <!-- Main Content Area: Stacked Chat + History -->
+    <main class="app-main">
+      
+      <!-- Chat Section -->
+      <section class="chat-section">
+        <div id="chat-history" class="chat-history">
+          <div class="message system-message">
+            <div class="message-content">
+              Welcome to <strong>Change</strong>! Type a layout adjustment below (e.g. <em>"hide the sidebar"</em> or <em>"move the navbar to the bottom"</em>) to customize this website.
+            </div>
+          </div>
+        </div>
+        
+        <div id="typing-indicator" class="typing-indicator" style="display: none;">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+
+        <div class="chat-input-container">
+          <input type="text" id="chat-input" placeholder="Ask Change to adjust layout..." autocomplete="off">
+          <button id="send-btn" class="send-btn" disabled>
+            <svg class="send-icon" viewBox="0 0 24 24">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- Change History Section -->
+      <section class="history-section">
+        <div class="history-header">
+          <span class="history-title">Saved Overrides</span>
+          <button id="undo-all-btn" class="text-btn danger-text" style="display: none;">Undo All</button>
+        </div>
+        <div id="history-list" class="history-list">
+          <div class="history-empty">No overrides applied to this website yet.</div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
