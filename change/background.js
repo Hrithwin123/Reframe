@@ -34,7 +34,11 @@ function isSafe(code) {
   return !BLOCKED_TERMS.some(term => code.includes(term));
 }
 
-const SYSTEM_PROMPT = `You are a browser layout customization engine. Your job is to write JavaScript that modifies the visual appearance and layout of webpages based on user requests. You are given a compact structural skeleton of the page DOM and a plain language request from the user.
+const SYSTEM_PROMPT = `You are a browser layout customization engine. Your job is to write JavaScript that modifies the visual appearance and layout of webpages based on user requests.
+
+You are given a compact structural skeleton of the page DOM. The format is an Emmet-inspired tree:
+- \`tagName#id.class1.class2[attr="value"] {Text Content}\`
+- Example: \`a.btn.primary[href="/login"] {Sign In}\`
 
 ABSOLUTE RULES — never violate these under any circumstances:
 

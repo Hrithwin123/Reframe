@@ -60,14 +60,7 @@ function applySavedOverrides() {
 applySavedOverrides();
 
 // --- 3. DOM SKELETON EXTRACTOR ---
-function isDynamicClass(cls) {
-  if (/[:/\[\]%]/.test(cls)) return true; // Filter out tailwind classes with special characters
-  if (/^[a-zA-Z]{1,3}\d{3,}/.test(cls)) return true;
-  if (/^[a-zA-Z0-9_-]{12,}$/.test(cls) && /\d/.test(cls)) return true;
-  if (/^css-[a-zA-Z0-9]+$/.test(cls)) return true;
-  if (/^_[a-zA-Z0-9]{4,}$/.test(cls)) return true;
-  return false;
-}
+const SKIP_TAGS = new Set(['script', 'style', 'noscript', 'meta', 'link', 'title', 'head', 'base']);
 
 function isVisible(el) {
   const s = window.getComputedStyle(el);
@@ -78,29 +71,54 @@ function isVisible(el) {
   return true;
 }
 
-function getIdentity(el) {
-  const tag = el.tagName.toLowerCase();
-  const id = el.id ? `#${el.id}` : '';
-  const classes = [...el.classList]
-    .filter(c => !isDynamicClass(c))
-    .slice(0, 3)
-    .map(c => `.${c}`)
-    .join('');
-  const role = el.getAttribute('role') ? `[role=${el.getAttribute('role')}]` : '';
-  const label = el.getAttribute('aria-label');
-  const ariaLabel = (label && label.length < 30) ? `[aria-label="${label}"]` : '';
-  return `${tag}${id}${classes}${role}${ariaLabel}`;
+function truncateText(text) {
+  text = text.replace(/\s+/g, ' ').trim();
+  return text;
 }
 
-const SKIP_TAGS = new Set(['script', 'style', 'noscript', 'meta', 'link', 'title', 'head']);
+function getIdentity(el) {
+  let identity = el.tagName.toLowerCase();
+  
+  // Replace SVG internals entirely
+  if (identity === 'svg') return 'svg';
 
-function extractNode(el, depth, maxDepth) {
-  if (depth > maxDepth) return null;
+  if (el.id) {
+    identity += `#${el.id}`;
+  }
+
+  // Keep all classes
+  const classes = [...el.classList];
+  if (classes.length > 0) {
+    identity += '.' + classes.join('.');
+  }
+
+  // Meaningful attributes
+  const attrNames = ['href', 'src', 'placeholder', 'type', 'alt', 'aria-label', 'role', 'name', 'value'];
+  for (const attr of attrNames) {
+    const val = el.getAttribute(attr);
+    if (val) {
+      identity += `[${attr}="${val}"]`;
+    }
+  }
+
+  return identity;
+}
+
+function getDirectText(el) {
+  let text = '';
+  for (const node of el.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += node.textContent + ' ';
+    }
+  }
+  return truncateText(text);
+}
+
+function extractNode(el) {
   const tag = el.tagName?.toLowerCase();
   if (!tag) return null;
   if (SKIP_TAGS.has(tag)) return null;
-  
-  // Need a try-catch in case window.getComputedStyle throws (e.g. cross-origin issues)
+
   try {
     if (!isVisible(el)) return null;
   } catch (e) {
@@ -108,34 +126,35 @@ function extractNode(el, depth, maxDepth) {
   }
 
   const identity = getIdentity(el);
-  const children = [];
+  const text = getDirectText(el);
+  
+  const node = { identity, text, children: [] };
 
-  if (tag !== 'svg' && tag !== 'img') {
-    const childEls = [...el.children];
-    const limited = childEls.length > 20 ? childEls.slice(0, 12) : childEls;
-    const overflow = childEls.length > 20 ? childEls.length - 12 : 0;
-
-    for (const child of limited) {
-      const node = extractNode(child, depth + 1, maxDepth);
-      if (node) children.push(node);
+  if (tag !== 'svg') {
+    for (const child of el.children) {
+      const childNode = extractNode(child);
+      if (childNode) {
+        node.children.push(childNode);
+      }
     }
-    if (overflow > 0) children.push({ identity: `... and ${overflow} more children`, children: [] });
   }
 
-  // skip elements with no identity and no useful children
-  const hasIdentity = el.id || [...el.classList].some(c => !isDynamicClass(c)) ||
-                      el.getAttribute('role') || el.getAttribute('aria-label');
-  if (!hasIdentity && children.length === 0) return null;
-
-  return { identity, children };
+  return node;
 }
 
-function serialize(node, depth) {
+function serializeNode(node, depth = 0) {
   const indent = '  '.repeat(depth);
-  let out = `${indent}${node.identity}\n`;
-  for (const child of node.children) {
-    out += serialize(child, depth + 1);
+  let line = `${indent}${node.identity}`;
+  if (node.text) {
+    line += ` {${node.text}}`;
   }
+  line += '\n';
+
+  let out = line;
+  for (let i = 0; i < node.children.length; i++) {
+    out += serializeNode(node.children[i], depth + 1);
+  }
+
   return out;
 }
 
@@ -143,8 +162,10 @@ function getDOMSkeleton() {
   if (!document.body) {
     return '(body element not ready)';
   }
-  const root = extractNode(document.body, 0, 6);
-  return root ? serialize(root, 0) : '(could not extract DOM skeleton)';
+  const root = extractNode(document.body);
+  if (!root) return '(could not extract DOM skeleton)';
+  
+  return serializeNode(root, 0);
 }
 
 // --- 4. MESSAGE LISTENER ---
