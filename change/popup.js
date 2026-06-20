@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const historyList = document.getElementById('history-list');
   const undoAllBtn = document.getElementById('undo-all-btn');
   const optionsBtn = document.getElementById('options-btn');
-
   let currentTab = null;
   let currentDomain = '';
 
@@ -47,8 +46,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentTab = tabs[0];
       const urlStr = currentTab.url || '';
       
-      if (!urlStr || urlStr.startsWith('chrome://') || urlStr.startsWith('chrome-extension://') || urlStr.startsWith('edge://') || urlStr.startsWith('about:')) {
-        setSystemDisabled('Change cannot modify browser system or settings pages.');
+      if (!urlStr || urlStr.startsWith('chrome://') || urlStr.startsWith('chrome-extension://') || urlStr.startsWith('edge://') || urlStr.startsWith('about:') || urlStr.includes('chromewebstore.google.com')) {
+        setSystemDisabled('Change cannot modify browser system, settings, or Web Store pages.');
         return;
       }
 
@@ -138,6 +137,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     historyList.scrollTop = historyList.scrollHeight;
   }
 
+  function formatMessageText(text) {
+    // Escape HTML to prevent XSS
+    let escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+      
+    // Convert newlines to <br>
+    escaped = escaped.replace(/\n/g, '<br>');
+    
+    // Convert **bold** to <strong>bold</strong>
+    escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert `code` to <code>code</code>
+    escaped = escaped.replace(/`(.*?)`/g, '<code>$1</code>');
+    
+    return escaped;
+  }
+
   function addMessage(sender, text) {
     const msg = document.createElement('div');
     msg.className = `message ${sender}-message`;
@@ -148,6 +168,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Support basic markup/styling like bold and code formatting
     if (sender === 'system') {
       content.innerHTML = text;
+    } else if (sender === 'ai') {
+      content.innerHTML = formatMessageText(text);
     } else {
       content.textContent = text;
     }
@@ -209,8 +231,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (response && response.success) {
-          addMessage('ai', response.summary);
-          loadHistory();
+          const aiMessage = response.response || response.summary || 'Layout adjusted successfully.';
+          addMessage('ai', aiMessage);
+          if (response.hasChanges) {
+            loadHistory();
+          }
         } else {
           addMessage('error', response?.reason || 'Failed to apply changes.');
         }

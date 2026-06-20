@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (!key.startsWith('AIzaSy')) {
-      showStatus('Warning: Gemini API keys typically start with "AIzaSy". Checking key...', 'error');
+    if (!key.startsWith('AIzaSy') && !key.startsWith('gsk_')) {
+      showStatus('Warning: API keys typically start with "AIzaSy" (Gemini) or "gsk_" (Groq). Checking key...', 'error');
     }
 
     chrome.storage.local.set({ llm_api_key: key }, () => {
