@@ -42,17 +42,17 @@ The ENHANCED DOM TREE shows the parent-child hierarchy, classes, IDs, [W×H at X
 - CSS Injection over JS Loops: To handle infinite scroll and lazy-loaded elements, NEVER use JavaScript forEach loops to apply broad styling changes. You MUST inject raw <style> tags with broad CSS classes.
 - Scroll Listeners: You may use window.addEventListener('scroll') for sticky/shrinking elements, but you may ONLY read window.scrollY and modify CSS. No fetching or DOM insertion inside scroll handlers.
 - NEVER use blocked terms: eval(), setTimeout(), setInterval(), requestAnimationFrame(), fetch(), XMLHttpRequest, WebSocket, navigator., window.location, window.open, document.cookie, localStorage, sessionStorage, document.write, innerHTML, outerHTML.
-- Wrap your entire code in a single try { } catch(e) { }. Every querySelector call must be null-checked before use.
+- Never modify existing event listeners or <script> tags. (You may attach new event listeners to new elements you create).
 
 --- FRONTEND DESIGN SKILLS ---
 You must implement designs that look PREMIUM, modern, and aesthetically stunning.
 - Semantic Theming: Theme changes MUST produce a minimum of 8 semantically distinct color values mapped to roles (dominantBackground, surfaceColor, surfaceRaised, accentColor, accentHover, primaryText, secondaryText, borderColor). NEVER apply the exact same base color to different roles.
-- Theme Swapping & Precedence: To apply your theme, you MUST identify the specific selectors of elements using the old colors from the DOM, and inject CSS to override them. You MUST use !important on EVERY CSS rule you inject to guarantee it overrides React/Tailwind/inline styles.
-- Global Dark Mode: When requested to create a "dark mode", target the root containers (body, html, #root, #__next) first. Then, explicitly write CSS to override large bright areas (colored banners, light cards, headers, navbars) to dark surface colors (#1e1e1e, #2c2c2c).
+- Theme Swapping (CSS Variables & Wildcards): When applying a theme or color change, always follow this order: 1) First check the CSS VARIABLES block. If variables exist, override all color-related ones on :root in a single <style> tag. This is always the primary method. 2) Additionally, ALWAYS emit broad wildcard CSS covering: body, all inputs, and semantic wildcards like *[class*="card"], *[class*="modal"], *[class*="dropdown"], *[class*="menu"], *[class*="nav"]. Never rely on specific element selectors alone for theme changes. You MUST use !important on EVERY CSS rule.
+- Minimum Theme Coverage: Never consider a theme change complete if you've only targeted fewer than 8 distinct semantic selector groups. A real theme change touches everything.
 - Hover State Preservation: For EVERY element whose background or color you modify, you MUST emit a :hover variant in the CSS that is 10-15% darker/lighter. Never leave an interactive element without a hover state.
 - Viewport Media Queries: The top of the prompt provides the user's Viewport size. You MUST wrap all structural layout changes (position, display, width) in an @media (min-width: Xpx) query (where X is 90% of innerWidth rounded to nearest 100) to protect responsiveness.
 - Proportional Typography: Font size changes must use calc() or em on the body or :root level. NEVER hardcode absolute pixel sizes on individual elements.
-- Graceful Refusals: If requested to add backend logic, build new functional features, or alter mobile layouts, return success: false with a clear user-friendly explanation.
+- Graceful Refusals: You ARE allowed to create interactive frontend UI components (like dark mode toggle buttons, modals, UI states) using JavaScript. However, if requested to build features requiring actual database connections or altering mobile layouts, return success: false.
 
 OUTPUT FORMAT:
 Return only a raw JSON object. No markdown. No code fences. No explanation before or after. Only the JSON object itself.
@@ -261,20 +261,29 @@ User request: "${userPrompt}"`;
   console.log("Change Extension - API Prompt:\n", userPromptText);
 
   const isGroq = apiKey.startsWith('gsk_');
-  const url = isGroq 
-    ? 'https://api.groq.com/openai/v1/chat/completions'
-    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const isOpenRouter = apiKey.startsWith('sk-or-');
+  const isOAI = isGroq || isOpenRouter;
+
+  let url;
+  if (isGroq) url = 'https://api.groq.com/openai/v1/chat/completions';
+  else if (isOpenRouter) url = 'https://openrouter.ai/api/v1/chat/completions';
+  else url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   const requestHeaders = {
     'Content-Type': 'application/json'
   };
-  if (isGroq) {
+  if (isOAI) {
     requestHeaders['Authorization'] = `Bearer ${apiKey}`;
+    if (isOpenRouter) {
+      requestHeaders['HTTP-Referer'] = 'https://github.com/Harshith404/Reframe';
+      requestHeaders['X-Title'] = 'Reframe Change Extension';
+    }
   }
 
-  const requestBody = isGroq
-    ? {
-        model: 'llama-3.3-70b-versatile',
+  let requestBody;
+  if (isOAI) {
+    requestBody = {
+        model: isOpenRouter ? 'openai/gpt-oss-120b' : 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
@@ -287,8 +296,8 @@ User request: "${userPrompt}"`;
         ],
         temperature: 0.2,
         response_format: { type: 'json_object' }
-      }
-    : {
+      };
+  } else {
         system_instruction: {
           parts: [{ text: SYSTEM_PROMPT }]
         },
@@ -317,12 +326,14 @@ User request: "${userPrompt}"`;
       try { errJson = JSON.parse(errText); } catch (e) {}
       const errMsg = isGroq
         ? (errJson?.error?.message || `Groq API returned status ${apiResponse.status}`)
+        : isOpenRouter
+        ? (errJson?.error?.message || `OpenRouter API returned status ${apiResponse.status}`)
         : (errJson?.error?.message || `Gemini API returned status ${apiResponse.status}`);
       return { success: false, reason: errMsg };
     }
 
     const data = await apiResponse.json();
-    const rawText = isGroq
+    const rawText = isOAI
       ? data.choices?.[0]?.message?.content
       : data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) {
