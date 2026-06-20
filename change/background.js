@@ -298,20 +298,22 @@ User request: "${userPrompt}"`;
         response_format: { type: 'json_object' }
       };
   } else {
-        system_instruction: {
-          parts: [{ text: SYSTEM_PROMPT }]
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: userPromptText }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: 'application/json'
+    requestBody = {
+      system_instruction: {
+        parts: [{ text: SYSTEM_PROMPT }]
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userPromptText }]
         }
-      };
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json'
+      }
+    };
+  }
 
   try {
     const apiResponse = await fetch(url, {
