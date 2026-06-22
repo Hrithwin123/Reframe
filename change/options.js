@@ -1,29 +1,39 @@
 document.addEventListener('DOMContentLoaded', () => {
   const apiKeyInput = document.getElementById('api-key');
+  const modelNameInput = document.getElementById('model-name');
   const saveBtn = document.getElementById('save-btn');
   const statusDiv = document.getElementById('status');
 
-  // Load existing API key
-  chrome.storage.local.get(['llm_api_key'], (result) => {
+  // Load existing API key and model name
+  chrome.storage.local.get(['llm_api_key', 'llm_model_name'], (result) => {
     if (result.llm_api_key) {
       apiKeyInput.value = result.llm_api_key;
     }
+    if (result.llm_model_name) {
+      modelNameInput.value = result.llm_model_name;
+    }
   });
 
-  // Save API key
+  // Save settings
   saveBtn.addEventListener('click', () => {
     const key = apiKeyInput.value.trim();
+    const model = modelNameInput.value.trim();
 
     if (!key) {
-      showStatus('Please enter a valid API key.', 'error');
+      showStatus('Please enter a valid API key or "ollama".', 'error');
       return;
     }
 
-    if (!key.startsWith('AIzaSy') && !key.startsWith('gsk_')) {
-      showStatus('Warning: API keys typically start with "AIzaSy" (Gemini) or "gsk_" (Groq). Checking key...', 'error');
+    if (key.toLowerCase() === 'ollama' && !model) {
+      showStatus('Please specify an Ollama Model Name (e.g., llama3.2).', 'error');
+      return;
     }
 
-    chrome.storage.local.set({ llm_api_key: key }, () => {
+    if (!key.startsWith('AIzaSy') && !key.startsWith('gsk_') && !key.startsWith('sk-or-') && key.toLowerCase() !== 'ollama') {
+      showStatus('Warning: Unrecognized API key format. Checking key...', 'error');
+    }
+
+    chrome.storage.local.set({ llm_api_key: key, llm_model_name: model }, () => {
       showStatus('Settings saved successfully! You can now use the extension.', 'success');
     });
   });

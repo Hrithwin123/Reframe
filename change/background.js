@@ -29,69 +29,115 @@ function isSafe(code) {
   return true; // Guardrails temporarily disabled as requested
 }
 
-const SYSTEM_PROMPT = `You are a world-class Frontend Design & Layout Engine. Your job is to write safe JavaScript that modifies the visual appearance and layout of webpages based on user requests.`;
+const PROMPT_TURN_1_ANALYSIS = `You are a Senior Frontend Developer in ANALYSIS mode. Do not write any code. Your only job is to understand the current state of the page.
 
-const CRITICAL_RULES = `You are given a highly compressed === ENHANCED DOM TREE === preceded by a === DESIGN SYSTEM === block.
-The DESIGN SYSTEM extracts the site's global typography and semantic color palette. You MUST map your designs to these exact roles (dominantBackground, surfaceColor, accentColor, primaryText) to perfectly match the site's native branding.
-The ENHANCED DOM TREE shows the parent-child hierarchy, classes, IDs, [W×H at X,Y] screen coordinates, and minified {computed CSS}. Each node also contains a unique sel="..." CSS selector. Use this inline CSS data to understand the layout before writing modifications.
+User request: "{userPrompt}"
 
---- CORE SAFETY & ARCHITECTURE ---
-- Guaranteed Selectors: NEVER guess a CSS selector. You MUST use the exact sel="..." string provided for the target element in the DOM tree. If no selector exists for your target, return { "success": false, "reason": "target element not found in extraction" }.
-- Child-Aware Resizing: When modifying layout dimensions (width, height) of a container, you MUST inspect its direct children's flex/grid/width properties. Emit CSS fixes for any child that has hardcoded widths that break the new parent size.
-- Class Cloning: When creating new structural components on a site that uses a CSS framework, DO NOT write raw CSS. You MUST clone the exact "class" string from a neighboring element.
-- CSS Injection over JS Loops: To handle infinite scroll and lazy-loaded elements, NEVER use JavaScript forEach loops to apply broad styling changes. You MUST inject raw <style> tags with broad CSS classes.
-- Scroll Listeners: You may use window.addEventListener('scroll') for sticky/shrinking elements, but you may ONLY read window.scrollY and modify CSS. No fetching or DOM insertion inside scroll handlers.
-- NEVER use blocked terms: eval(), setTimeout(), setInterval(), requestAnimationFrame(), fetch(), XMLHttpRequest, WebSocket, navigator., window.location, window.open, document.cookie, localStorage, sessionStorage, document.write, innerHTML, outerHTML.
-- Never modify existing event listeners or <script> tags. (You may attach new event listeners to new elements you create).
+Step 1 - Analyse only. Identify:
+- What is the current background color of the page?
+- What styling system is being used (tailwind/css-variables/inline/stylesheet)?
+- List every distinct surface type visible (navbar, cards, inputs, modals, badges etc)
+- For each surface, what is its current background color?
+- Which surfaces contain text that will need recoloring?
+- Are there any elements that should NOT be modified (brand colors, images, status badges)?
 
---- FRONTEND DESIGN SKILLS ---
-You must implement designs that look PREMIUM, modern, and aesthetically stunning.
-- Semantic Theming: Theme changes MUST produce a minimum of 8 semantically distinct color values mapped to roles (dominantBackground, surfaceColor, surfaceRaised, accentColor, accentHover, primaryText, secondaryText, borderColor). NEVER apply the exact same base color to different roles.
-- Theme Swapping (CSS Variables & Wildcards): When applying a theme or color change, always follow this order: 1) First check the CSS VARIABLES block. If variables exist, override all color-related ones on :root in a single <style> tag. This is always the primary method. 2) Additionally, ALWAYS emit broad wildcard CSS covering: body, all inputs, and semantic wildcards like *[class*="card"], *[class*="modal"], *[class*="dropdown"], *[class*="menu"], *[class*="nav"]. Never rely on specific element selectors alone for theme changes. You MUST use !important on EVERY CSS rule.
-- Minimum Theme Coverage: Never consider a theme change complete if you've only targeted fewer than 8 distinct semantic selector groups. A real theme change touches everything.
-- Hover State Preservation: For EVERY element whose background or color you modify, you MUST emit a :hover variant in the CSS that is 10-15% darker/lighter. Never leave an interactive element without a hover state.
-- Viewport Media Queries: The top of the prompt provides the user's Viewport size. You MUST wrap all structural layout changes (position, display, width) in an @media (min-width: Xpx) query (where X is 90% of innerWidth rounded to nearest 100) to protect responsiveness.
-- Proportional Typography: Font size changes must use calc() or em on the body or :root level. NEVER hardcode absolute pixel sizes on individual elements.
-- Graceful Refusals: You ARE allowed to create interactive frontend UI components (like dark mode toggle buttons, modals, UI states) using JavaScript. However, if requested to build features requiring actual database connections or altering mobile layouts, return success: false.
-
-OUTPUT FORMAT:
-Return only a raw JSON object. No markdown. No code fences. No explanation before or after. Only the JSON object itself.
-
-If the user asks a question, requests an explanation of the page structure/selectors, or initiates a general conversation:
+Return ONLY valid JSON in this exact format:
 {
-  "success": true,
-  "code": "",
-  "css": "",
-  "summary": "",
-  "reversalCode": "",
-  "response": "Your detailed conversational reply. You can mention tags, classes, and IDs you see in the DOM structure, explain why certain layouts are constrained, or answer their questions directly (markdown is supported)."
-}
+  "stylingMethod": "tailwind|css-variables|stylesheet|inline",
+  "cssVariablesExist": true|false,
+  "cssVariablesUsed": true|false,
+  "surfaces": [
+    { "name": "navbar", "selector": "#navbar", "currentBg": "#ffffff", "hasText": true }
+  ],
+  "preserveElements": ["hero gradient", "orange buttons"],
+  "textElements": [
+    { "selector": "h3.item-title", "currentColor": "#111", "surface": "food card" }
+  ]
+}`;
 
-If you can safely and confidently fulfill a layout change or visual modification:
+const PROMPT_TURN_2_PLANNING = `You are a Senior Frontend Developer in PLANNING mode. Do not write any code yet.
+Based on your analysis, create a complete change plan for the user's request.
+
+Step 2 - Plan only. For each surface identified:
+- What should its new background color be?
+- What text elements inside it need recoloring and to what?
+- What is the correct CSS approach given the styling method detected?
+- List any dependent elements (if you change X, what else must change?)
+- What elements must be explicitly preserved?
+
+Return ONLY valid JSON in this exact format:
 {
-  "success": true,
-  "themePalette": {
-    "dominantBackground": "#hex1",
-    "surfaceColor": "#hex2",
-    "surfaceRaised": "#hex3",
-    "accentColor": "#hex4",
-    "accentHover": "#hex5",
-    "primaryText": "#hex6",
-    "secondaryText": "#hex7",
-    "borderColor": "#hex8"
+  "approach": "explanation of overall strategy in one paragraph",
+  "paletteMap": {
+    "pageBackground": "#0F0F0F",
+    "navbarBackground": "#1A1A1A",
+    "cardBackground": "#242424",
+    "cardHover": "#2C2C2C",
+    "primaryText": "#F5F5F5",
+    "secondaryText": "#A0A0A0",
+    "mutedText": "#606060",
+    "borderColor": "#2A2A2A",
+    "inputBackground": "#1A1A1A",
+    "preservedAccent": "#FF5733"
   },
-  "layoutAnalysis": "A mandatory analysis where you think step-by-step BEFORE writing any code. You must: 1) Extract the sel='...' for the target element. 2) Inspect its direct children's CSS. 3) Plan the exact CSS to inject, including required :hover states and @media wrappers.",
-  "code": "your complete JS as a single string with \\n for newlines",
-  "css": "the equivalent CSS styles to inject (e.g., '@media (min-width: 1000px) { #masthead { position: fixed !important; } }'), or an empty string if it cannot be achieved via CSS",
-  "summary": "one concise sentence describing what this change does",
-  "reversalCode": "your complete reversal JS as a single string",
-  "response": "Optional brief explanation of what you changed or selectors you targeted (markdown is supported)"
-}
+  "changes": [
+    {
+      "target": "navbar",
+      "selector": "#navbar",
+      "property": "background",
+      "from": "#ffffff",
+      "to": "#1A1A1A",
+      "dependents": ["navbar text -> #F5F5F5"]
+    }
+  ],
+  "preservedElements": [
+    { "selector": ".hero", "reason": "brand gradient, do not touch" }
+  ]
+}`;
 
-If you cannot safely fulfill the request (ambiguous, impossible, out of scope feature request, or would require violating the rules above):
+const PROMPT_TURN_3_CODE = `You are a Senior Frontend Developer in CODE GENERATION mode.
+Based on your analysis and plan, now write the complete JavaScript and CSS.
+
+Step 3 - Code only. Rules:
+- Follow the paletteMap exactly, do not deviate from planned colors
+- Address every surface in your changes list
+- For every surface you modify, explicitly handle all text descendants
+- Use the approach determined in Step 2 based on styling method
+- Every selector must be null-checked if using JS, but prioritize CSS <style> injection.
+- Include hover states for every interactive element
+- Do not touch preserved elements
+- ALWAYS use !important on your CSS overrides.
+- Use explicit CSS selectors from Turn 1.
+
+Return ONLY valid JSON in this exact format:
 {
-  "success": false,
-  "reason": "one sentence explaining why this cannot be done safely or why it's not possible"
+  "css": "complete CSS string (e.g. 'body { background: #111 !important; }')",
+  "js": "complete JS string (or empty string)", 
+  "selectorsUsed": ["#navbar", ".card"],
+  "estimatedElementsAffected": 47
+}`;
+
+const PROMPT_TURN_4_REVIEW = `You are a Senior Frontend Developer in REVIEW mode.
+Review the code you just generated against your initial analysis.
+
+Step 4 - Review your generated code. Check for:
+- Any surface from your analysis that was NOT addressed in the code?
+- Any text element that sits on a darkened surface but wasn't recolored?
+- Any selector that might not exist or is ambiguous?
+- Any preserved element that was accidentally modified?
+- Any missing hover states on interactive elements?
+
+If the code is perfectly correct, return ready: true.
+If the code missed anything, write the completely fixed CSS and JS and return ready: true.
+
+Return ONLY valid JSON in this exact format:
+{
+  "missedSurfaces": ["input placeholder text"],
+  "fixedCode": { "css": "corrected CSS", "js": "corrected JS" },
+  "confidence": 95,
+  "ready": true,
+  "summary": "Brief summary of what this change does (for the UI)",
+  "response": "Brief chat response explaining the result"
 }`;
 
 // Register dynamic rules to strip CSP response headers, enabling JavaScript injection for personal local testing
@@ -235,44 +281,31 @@ async function handleExecuteMainWorldJs({ code }, sender) {
 }
 
 async function handleGenerateChange({ domain, skeleton, userPrompt, existingChanges }) {
-  // Retrieve API Key
-  const storage = await chrome.storage.local.get(['llm_api_key']);
+  // Retrieve API Key and Model Name
+  const storage = await chrome.storage.local.get(['llm_api_key', 'llm_model_name']);
   const apiKey = storage.llm_api_key;
+  const modelName = storage.llm_model_name || '';
+
   if (!apiKey) {
     return { success: false, reason: 'API key is not configured. Please open extension options and save your API key.' };
   }
 
-  // Construct dynamic User Prompt
-  const existingList = existingChanges && existingChanges.length > 0
-    ? existingChanges.map((sum, idx) => `${idx + 1}. ${sum}`).join('\n')
-    : 'None';
-
-  const userPromptText = `Website: ${domain}
-DOM Structure:
-${skeleton}
-
-Changes already applied to this site (applied in this order):
-${existingList}
-
-${CRITICAL_RULES}
-
-User request: "${userPrompt}"`;
-
-  console.log("Change Extension - API Prompt:\n", userPromptText);
-
+async function callLLM(apiKey, systemPrompt, userText, modelName) {
   const isGroq = apiKey.startsWith('gsk_');
   const isOpenRouter = apiKey.startsWith('sk-or-');
-  const isOAI = isGroq || isOpenRouter;
+  const isOllama = apiKey.toLowerCase() === 'ollama';
+  const isOAI = isGroq || isOpenRouter || isOllama;
 
   let url;
   if (isGroq) url = 'https://api.groq.com/openai/v1/chat/completions';
   else if (isOpenRouter) url = 'https://openrouter.ai/api/v1/chat/completions';
+  else if (isOllama) url = 'http://localhost:11434/v1/chat/completions';
   else url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   const requestHeaders = {
     'Content-Type': 'application/json'
   };
-  if (isOAI) {
+  if (isOAI && !isOllama) {
     requestHeaders['Authorization'] = `Bearer ${apiKey}`;
     if (isOpenRouter) {
       requestHeaders['HTTP-Referer'] = 'https://github.com/Harshith404/Reframe';
@@ -282,32 +315,23 @@ User request: "${userPrompt}"`;
 
   let requestBody;
   if (isOAI) {
+    let targetModel = 'llama-3.3-70b-versatile';
+    if (isOpenRouter) targetModel = 'openai/gpt-oss-120b';
+    if (modelName) targetModel = modelName; // Override if provided
+
     requestBody = {
-        model: isOpenRouter ? 'openai/gpt-oss-120b' : 'llama-3.3-70b-versatile',
+        model: targetModel,
         messages: [
-          {
-            role: 'system',
-            content: SYSTEM_PROMPT
-          },
-          {
-            role: 'user',
-            content: userPromptText
-          }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userText }
         ],
         temperature: 0.2,
         response_format: { type: 'json_object' }
       };
   } else {
     requestBody = {
-      system_instruction: {
-        parts: [{ text: SYSTEM_PROMPT }]
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userPromptText }]
-        }
-      ],
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userText }] }],
       generationConfig: {
         temperature: 0.2,
         responseMimeType: 'application/json'
@@ -315,67 +339,104 @@ User request: "${userPrompt}"`;
     };
   }
 
+  const apiResponse = await fetch(url, {
+    method: 'POST',
+    headers: requestHeaders,
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!apiResponse.ok) {
+    const errText = await apiResponse.text();
+    let errJson;
+    try { errJson = JSON.parse(errText); } catch (e) {}
+    const errMsg = isGroq
+      ? (errJson?.error?.message || `Groq API returned status ${apiResponse.status}`)
+      : isOpenRouter
+      ? (errJson?.error?.message || `OpenRouter API returned status ${apiResponse.status}`)
+      : isOllama
+      ? (errJson?.error?.message || `Ollama API returned status ${apiResponse.status}. Is Ollama running?`)
+      : (errJson?.error?.message || `Gemini API returned status ${apiResponse.status}`);
+    throw new Error(errMsg);
+  }
+
+  const data = await apiResponse.json();
+  const rawText = isOAI
+    ? data.choices?.[0]?.message?.content
+    : data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+  if (!rawText) throw new Error('No response generated by the AI model.');
+
+  let cleanText = rawText.trim();
+  if (cleanText.startsWith('```')) {
+    cleanText = cleanText.replace(/^```(?:json)?\s*/i, '');
+    cleanText = cleanText.replace(/\s*```$/, '');
+  }
+  cleanText = cleanText.trim();
+
   try {
-    const apiResponse = await fetch(url, {
-      method: 'POST',
-      headers: requestHeaders,
-      body: JSON.stringify(requestBody)
-    });
+    return JSON.parse(cleanText);
+  } catch (e) {
+    const match = cleanText.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    } else {
+      throw new Error('AI returned invalid JSON formatting.');
+    }
+  }
+}
 
-    if (!apiResponse.ok) {
-      const errText = await apiResponse.text();
-      let errJson;
-      try { errJson = JSON.parse(errText); } catch (e) {}
-      const errMsg = isGroq
-        ? (errJson?.error?.message || `Groq API returned status ${apiResponse.status}`)
-        : isOpenRouter
-        ? (errJson?.error?.message || `OpenRouter API returned status ${apiResponse.status}`)
-        : (errJson?.error?.message || `Gemini API returned status ${apiResponse.status}`);
-      return { success: false, reason: errMsg };
+  // Construct dynamic User Prompt
+  const existingList = existingChanges && existingChanges.length > 0
+    ? existingChanges.map((sum, idx) => `${idx + 1}. ${sum}`).join('\n')
+    : 'None';
+
+  const baseContext = `Website: ${domain}\nDOM Structure:\n${skeleton}\n\nExisting Changes:\n${existingList}\n\nUser request: "${userPrompt}"`;
+  
+  const broadcastStatus = (stepMsg) => {
+    chrome.runtime.sendMessage({ type: 'PIPELINE_STATUS', step: stepMsg });
+  };
+
+  try {
+    // Turn 1: Analysis
+    broadcastStatus('🔍 Analysing page structure...');
+    const prompt1 = PROMPT_TURN_1_ANALYSIS.replace('{userPrompt}', userPrompt);
+    const analysis = await callLLM(apiKey, prompt1, baseContext, modelName);
+    
+    // Turn 2: Planning
+    broadcastStatus('📋 Planning changes...');
+    const context2 = baseContext + '\n\n=== TURN 1: ANALYSIS ===\n' + JSON.stringify(analysis, null, 2);
+    const plan = await callLLM(apiKey, PROMPT_TURN_2_PLANNING, context2, modelName);
+
+    // Turn 3: Code Generation
+    broadcastStatus('⚙️ Generating code...');
+    const context3 = context2 + '\n\n=== TURN 2: PLAN ===\n' + JSON.stringify(plan, null, 2);
+    const codeGen = await callLLM(apiKey, PROMPT_TURN_3_CODE, context3, modelName);
+
+    // Turn 4: Review
+    broadcastStatus('✅ Reviewing...');
+    const context4 = context3 + '\n\n=== TURN 3: GENERATED CODE ===\n' + JSON.stringify(codeGen, null, 2);
+    const review = await callLLM(apiKey, PROMPT_TURN_4_REVIEW, context4, modelName);
+
+    const stripCodeFences = (str) => {
+      if (typeof str !== 'string') return str;
+      return str.replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/, '');
+    };
+
+    let finalCss = '';
+    let finalJs = '';
+    if (review.fixedCode && (review.fixedCode.css || review.fixedCode.js)) {
+      finalCss = review.fixedCode.css || '';
+      finalJs = review.fixedCode.js || '';
+    } else {
+      finalCss = codeGen.css || '';
+      finalJs = codeGen.js || '';
     }
 
-    const data = await apiResponse.json();
-    const rawText = isOAI
-      ? data.choices?.[0]?.message?.content
-      : data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawText) {
-      return { success: false, reason: 'No response generated by the AI model.' };
-    }
+    finalCss = stripCodeFences(finalCss);
+    finalJs = stripCodeFences(finalJs);
 
-    // Parse Response
-    let cleanText = rawText.trim();
-    if (cleanText.startsWith('```')) {
-      cleanText = cleanText.replace(/^```(?:json)?\s*/i, '');
-      cleanText = cleanText.replace(/\s*```$/, '');
-    }
-    cleanText = cleanText.trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(cleanText);
-    } catch (e) {
-      // Fallback: try regex match for JSON block
-      const match = cleanText.match(/\{[\s\S]*\}/);
-      if (match) {
-        try {
-          parsed = JSON.parse(match[0]);
-        } catch (e2) {
-          console.error('Failed to parse matched JSON block:', match[0]);
-          return { success: false, reason: 'AI returned invalid JSON formatting. Please try again.' };
-        }
-      } else {
-        console.error('Failed to parse Gemini response as JSON:', rawText);
-        return { success: false, reason: 'AI returned invalid JSON formatting. Please try again.' };
-      }
-    }
-
-    if (!parsed.success) {
-      return { success: false, reason: parsed.reason || 'AI was unable to safely process your request.' };
-    }
-
-    // Safety validation for generated code
-    if (!isSafe(parsed.code)) {
-      return { success: false, reason: 'The generated code contained potentially unsafe operations and was blocked. Try rephrasing your request.' };
+    if (!isSafe(finalJs)) {
+      return { success: false, reason: 'The generated code contained potentially unsafe operations and was blocked.' };
     }
 
     // Read existing stack length to determine index
@@ -389,11 +450,11 @@ User request: "${userPrompt}"`;
       return { success: false, reason: 'No active tab found. Please reload the webpage and try again.' };
     }
 
-    if (parsed.css) {
+    if (finalCss) {
       try {
         await chrome.tabs.sendMessage(tab.id, { 
           type: 'APPLY_CHANGE', 
-          css: parsed.css,
+          css: finalCss,
           index: changeIndex
         });
       } catch (e) {
@@ -410,12 +471,12 @@ User request: "${userPrompt}"`;
             }
             style.textContent = cssCode;
           },
-          args: [parsed.css, changeIndex]
+          args: [finalCss, changeIndex]
         });
       }
     }
 
-    if (parsed.code) {
+    if (finalJs) {
       try {
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
@@ -427,29 +488,22 @@ User request: "${userPrompt}"`;
               console.error("Failed to execute generated JS:", e);
             }
           },
-          args: [parsed.code]
+          args: [finalJs]
         });
       } catch (e) {
         console.error('Failed to execute generated JS in main world:', e);
       }
     }
 
-    const hasChanges = (parsed.code && parsed.code.trim() !== '') || (parsed.css && parsed.css.trim() !== '');
+    const hasChanges = (finalJs && finalJs.trim() !== '') || (finalCss && finalCss.trim() !== '');
 
     if (hasChanges) {
-      // Reversal Code Safety Check
-      const reversalSafe = isSafe(parsed.reversalCode);
-      const safeReversalCode = reversalSafe 
-        ? parsed.reversalCode 
-        : '/* reversal unavailable — reload the page to reset */';
-
-      // Save change to stack
       const changeObject = {
-        summary: parsed.summary || 'Custom layout adjustment',
-        code: parsed.code,
-        css: parsed.css || '',
-        reversalCode: safeReversalCode,
-        reversalAvailable: reversalSafe,
+        summary: review.summary || 'Custom layout adjustment (CoT Pipeline)',
+        code: finalJs,
+        css: finalCss,
+        reversalCode: '/* reversal unavailable — reload the page to reset */',
+        reversalAvailable: false,
         timestamp: new Date().toISOString(),
         prompt: userPrompt
       };
@@ -460,15 +514,14 @@ User request: "${userPrompt}"`;
       return { 
         success: true, 
         summary: changeObject.summary, 
-        response: parsed.response,
+        response: review.response || 'Successfully planned and generated changes!',
         changeIndex: changeIndex,
         hasChanges: true
       };
     } else {
-      // Just a conversation response
       return { 
         success: true, 
-        response: parsed.response || 'Request processed successfully.',
+        response: review.response || 'No layout changes were necessary.',
         hasChanges: false
       };
     }

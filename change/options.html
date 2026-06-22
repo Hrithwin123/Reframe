@@ -279,9 +279,16 @@
       </div>
 
       <div class="form-group">
-        <label for="api-key" class="label">API Key (Gemini, Groq, or OpenRouter)</label>
+        <label for="api-key" class="label">API Key (Gemini, Groq, OpenRouter, or 'ollama')</label>
         <div class="input-wrapper">
-          <input type="password" id="api-key" class="input" placeholder="AIzaSy... or gsk_... or sk-or-...">
+          <input type="password" id="api-key" class="input" placeholder="AIzaSy... or gsk_... or sk-or-... or ollama">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 16px;">
+        <label for="model-name" class="label">Model Name (Optional Override)</label>
+        <div class="input-wrapper">
+          <input type="text" id="model-name" class="input" placeholder="e.g. llama3.2 (Required for Ollama)">
         </div>
       </div>
 
@@ -293,7 +300,8 @@
         Need an API key? Get one from 
         <a href="https://aistudio.google.com/" target="_blank">Google</a>, 
         <a href="https://console.groq.com/" target="_blank">Groq</a>, or 
-        <a href="https://openrouter.ai/" target="_blank">OpenRouter</a>.
+        <a href="https://openrouter.ai/" target="_blank">OpenRouter</a>.<br>
+        For local inference, type <strong>ollama</strong> as the key and specify your pulled model.
       </p>
     </div>
   </div>
