@@ -511,7 +511,16 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
     ? existingChanges.map((sum, idx) => `${idx + 1}. ${sum}`).join('\n')
     : 'None';
 
-  const baseContext = `Website: ${domain}\nDOM Structure:\n${skeleton}\n\nExisting Changes:\n${existingList}\n\nUser request: "${userPrompt}"`;
+  const baseContext = `Website: ${domain}
+DOM Structure:
+${skeleton}
+
+Existing Changes:
+${existingList}
+
+IMPORTANT: You MUST generate the CSS and JS for the user's request below. Do NOT skip generation or assume it is already done just because a similar change exists in the "Existing Changes" list. The user is actively requesting this NOW.
+
+User request: "${userPrompt}"`;
   
   const broadcastStatus = (stepMsg) => {
     chrome.runtime.sendMessage({ type: 'PIPELINE_STATUS', step: stepMsg });
@@ -543,14 +552,16 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
       return str.replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/, '');
     };
 
-    let finalCss = '';
-    let finalJs = '';
-    if (review.fixedCode && (review.fixedCode.css || review.fixedCode.js)) {
-      finalCss = review.fixedCode.css || '';
-      finalJs = review.fixedCode.js || '';
-    } else {
-      finalCss = codeGen.css || '';
-      finalJs = codeGen.js || '';
+    let finalCss = codeGen.css || '';
+    let finalJs = codeGen.js || '';
+
+    const fixedCss = review.fixedCode && typeof review.fixedCode.css === 'string' ? review.fixedCode.css.trim() : '';
+    const fixedJs = review.fixedCode && typeof review.fixedCode.js === 'string' ? review.fixedCode.js.trim() : '';
+
+    // Only override with fixedCode if the AI actually provided substantial fixed code
+    if (fixedCss !== '' || fixedJs !== '') {
+      if (fixedCss !== '') finalCss = review.fixedCode.css;
+      if (fixedJs !== '') finalJs = review.fixedCode.js;
     }
 
     finalCss = stripCodeFences(finalCss);
