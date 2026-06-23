@@ -511,16 +511,7 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
     ? existingChanges.map((sum, idx) => `${idx + 1}. ${sum}`).join('\n')
     : 'None';
 
-  const baseContext = `Website: ${domain}
-DOM Structure:
-${skeleton}
-
-Existing Changes:
-${existingList}
-
-IMPORTANT: You MUST generate the CSS and JS for the user's request below. Do NOT skip generation or assume it is already done just because a similar change exists in the "Existing Changes" list. The user is actively requesting this NOW.
-
-User request: "${userPrompt}"`;
+  const baseContext = `Website: ${domain}\nDOM Structure:\n${skeleton}\n\nExisting Changes:\n${existingList}\n\nUser request: "${userPrompt}"`;
   
   const broadcastStatus = (stepMsg) => {
     chrome.runtime.sendMessage({ type: 'PIPELINE_STATUS', step: stepMsg });
