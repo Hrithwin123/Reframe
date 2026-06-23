@@ -651,7 +651,7 @@ User request: "${userPrompt}"`;
     } else {
       return { 
         success: true, 
-        response: review.response || 'No layout changes were necessary.',
+        response: `DEBUG INFO:\nCodeGen: ${JSON.stringify(codeGen)}\nReview: ${JSON.stringify(review)}`,
         hasChanges: false
       };
     }
