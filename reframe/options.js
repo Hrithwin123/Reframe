@@ -20,17 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const model = modelNameInput.value.trim();
 
     if (!key) {
-      showStatus('Please enter a valid API key or "ollama".', 'error');
+      showStatus('Please enter a valid API key.', 'error');
       return;
     }
 
-    if (key.toLowerCase() === 'ollama' && !model) {
-      showStatus('Please specify an Ollama Model Name (e.g., llama3.2).', 'error');
+    if (!key.startsWith('AIzaSy') && !key.startsWith('gsk_') && !key.startsWith('sk-or-')) {
+      showStatus('Invalid key format. Should start with AIzaSy (Gemini), gsk_ (Groq), or sk-or- (OpenRouter).', 'error');
       return;
-    }
-
-    if (!key.startsWith('AIzaSy') && !key.startsWith('gsk_') && !key.startsWith('sk-or-') && key.toLowerCase() !== 'ollama') {
-      showStatus('Warning: Unrecognized API key format. Checking key...', 'error');
     }
 
     chrome.storage.local.set({ llm_api_key: key, llm_model_name: model }, () => {

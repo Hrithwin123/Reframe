@@ -396,19 +396,17 @@ async function handleGenerateChange({ domain, skeleton, userPrompt, existingChan
 async function callLLM(apiKey, systemPrompt, userText, modelName) {
   const isGroq = apiKey.startsWith('gsk_');
   const isOpenRouter = apiKey.startsWith('sk-or-');
-  const isOllama = apiKey.toLowerCase() === 'ollama';
-  const isOAI = isGroq || isOpenRouter || isOllama;
+  const isOAI = isGroq || isOpenRouter;
 
   let url;
   if (isGroq) url = 'https://api.groq.com/openai/v1/chat/completions';
   else if (isOpenRouter) url = 'https://openrouter.ai/api/v1/chat/completions';
-  else if (isOllama) url = 'http://127.0.0.1:11434/v1/chat/completions';
   else url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   const requestHeaders = {
     'Content-Type': 'application/json'
   };
-  if (isOAI && !isOllama) {
+  if (isOAI) {
     requestHeaders['Authorization'] = `Bearer ${apiKey}`;
     if (isOpenRouter) {
       requestHeaders['HTTP-Referer'] = 'https://github.com/Harshith404/Reframe';
@@ -431,10 +429,8 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
         temperature: 0.2
       };
       
-    // Only apply json_object format for native OpenAI/Groq endpoints, as some local Ollama models hang with strict grammar
-    if (!isOllama) {
-      requestBody.response_format = { type: 'json_object' };
-    }
+    // Apply json_object format for native OpenAI/Groq endpoints
+    requestBody.response_format = { type: 'json_object' };
   } else {
     requestBody = {
       system_instruction: { parts: [{ text: systemPrompt }] },
@@ -480,8 +476,6 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
       ? (errJson?.error?.message || `Groq API returned status ${apiResponse.status}`)
       : isOpenRouter
       ? (errJson?.error?.message || `OpenRouter API returned status ${apiResponse.status}`)
-      : isOllama
-      ? (errJson?.error?.message || `Ollama API returned status ${apiResponse.status}. Is Ollama running?`)
       : (errJson?.error?.message || `Gemini API returned status ${apiResponse.status}`);
     throw new Error(errMsg);
   }
