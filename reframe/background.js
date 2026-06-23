@@ -134,6 +134,7 @@ Step 3 - Code only. Rules:
   Replace CHANGEID with a unique string based on what the change does (e.g. darkmode, navbar_bottom, hide_sidebar). This ensures re-running on SPA navigation skips already-applied changes without re-running them unnecessarily, while allowing retries if the page hasn't finished rendering yet.
 Return ONLY valid JSON in this exact format:
 {
+  "thought_process": "Brief step-by-step reasoning for how you will write the CSS/JS to achieve the goal.",
   "css": "complete CSS string (e.g. 'body { background: #111 !important; }')",
   "js": "complete JS string (or empty string)", 
   "selectorsUsed": ["#navbar", ".card"],
@@ -157,6 +158,7 @@ If the code missed anything or created visibility issues, write the completely f
 
 Return ONLY valid JSON in this exact format:
 {
+  "thought_process": "Brief step-by-step review of the generated code against the constraints.",
   "missedSurfaces": ["input placeholder text"],
   "fixedCode": { "css": "corrected CSS", "js": "corrected JS" },
   "confidence": 95,
