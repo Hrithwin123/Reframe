@@ -1,17 +1,18 @@
 :root {
-  --bg-dark: #000000;
-  --glass-bg: rgba(255, 255, 255, 0.12);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --bg-dark: #050508;
+  --glass-bg: rgba(20, 20, 25, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   
-  --text-main: #ffffff;
-  --text-muted: rgba(255, 255, 255, 0.6);
+  --text-main: #f0f0f5;
+  --text-muted: rgba(255, 255, 255, 0.5);
   
-  --accent-primary: #0a84ff;
-  --danger-color: #ff453a;
+  --accent-primary: #a855f7; /* Electric Purple */
+  --accent-secondary: #0ea5e9; /* Vibrant Blue */
+  --danger-color: #f43f5e;
   
-  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-title: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-title: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 * {
@@ -22,11 +23,10 @@
 
 body {
   font-family: var(--font-family);
-  background-color: #0d0d12 !important;
+  background-color: var(--bg-dark) !important;
   background-image: 
-    radial-gradient(circle at 10% 10%, rgba(10, 132, 255, 0.3), transparent 60%),
-    radial-gradient(circle at 90% 80%, rgba(94, 92, 230, 0.3), transparent 60%),
-    radial-gradient(circle at 50% 50%, rgba(48, 209, 88, 0.15), transparent 70%) !important;
+    radial-gradient(circle at 10% 10%, rgba(168, 85, 247, 0.15), transparent 50%),
+    radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.15), transparent 50%) !important;
   color: var(--text-main);
   width: 380px;
   height: 560px;
@@ -238,38 +238,38 @@ body.in-iframe {
   text-align: center;
 }
 
-/* Typing Indicator */
-.typing-indicator {
-  align-self: flex-start;
-  margin-left: 16px;
-  margin-bottom: 12px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 0.5px solid var(--glass-border);
-  padding: 10px 16px;
-  border-radius: 18px;
-  border-bottom-left-radius: 4px;
+/* AI Status Message Bubble */
+.ai-status-message {
+  border: 1px solid var(--accent-primary);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+  animation: pulse-border 2s infinite ease-in-out;
+}
+
+.ai-status-content {
   display: flex;
   align-items: center;
-  gap: 4px;
-  box-shadow: var(--glass-shadow);
+  gap: 10px;
+  color: var(--text-main);
+  font-weight: 500;
 }
 
-.typing-indicator .dot {
-  width: 6px;
-  height: 6px;
-  background: var(--text-muted);
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 5px rgba(168, 85, 247, 0.2); }
+  50% { box-shadow: 0 0 15px rgba(168, 85, 247, 0.5); }
+  100% { box-shadow: 0 0 5px rgba(168, 85, 247, 0.2); }
+}
+
+.pipeline-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(168, 85, 247, 0.3);
+  border-top-color: var(--accent-primary);
   border-radius: 50%;
-  animation: pulse 1.4s infinite ease-in-out both;
+  animation: spin 1s linear infinite;
 }
 
-.typing-indicator .dot:nth-child(1) { animation-delay: -0.32s; }
-.typing-indicator .dot:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes pulse {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1.0); }
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Chat Input (Control Center Floating Pill) */

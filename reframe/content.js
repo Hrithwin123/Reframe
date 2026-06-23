@@ -1,55 +1,46 @@
-// Change Chrome Extension - Content Script
+// Reframe Chrome Extension - Content Script
+// Runs at document_idle. CSS is already injected by content-early.js at document_start.
 
-// --- 1. CSS INJECTION HELPERS ---
-function injectCSS(cssCode, index) {
-  try {
-    const id = `change-ext-style-${index}`;
-    let style = document.getElementById(id);
-    if (!style) {
-      style = document.createElement('style');
-      style.id = id;
-      (document.head || document.documentElement).appendChild(style);
-    }
-    style.textContent = cssCode;
-  } catch (error) {
-    console.error('Change Extension: CSS injection failed:', error);
-  }
-}
-
-function removeCSS(index) {
-  try {
-    const style = document.getElementById(`change-ext-style-${index}`);
-    if (style) {
-      style.remove();
-    }
-  } catch (error) {
-    console.error('Change Extension: CSS removal failed:', error);
-  }
-}
-
-// --- 2. APPLY OVERRIDES ON LOAD ---
-function applySavedOverrides() {
+// --- 1. APPLY ALL SAVED CHANGES ---
+function applyAllChanges() {
   const domain = window.location.hostname;
+  if (!domain) return;
+
   chrome.storage.local.get([domain], (result) => {
-    const stack = result[domain];
-    if (stack && Array.isArray(stack)) {
-      console.log(`Change Extension: Applying ${stack.length} saved overrides for ${domain}`);
-      stack.forEach((change, index) => {
-        if (change.css) {
-          injectCSS(change.css, index);
-        }
-        if (change.code) {
-          chrome.runtime.sendMessage({ type: 'EXECUTE_MAIN_WORLD_JS', code: change.code });
-        }
-      });
+    let data = result[domain];
+    if (!data || Array.isArray(data) || !data.changes) {
+      console.log(`[Reframe Ext] No changes found for domain: ${domain}`);
+      return;
+    }
+
+    console.log(`[Reframe Ext] Found ${data.changes.length} saved changes. Applying...`);
+
+    // Move the early-injected style tag into <head> now that it exists
+    const earlyStyle = document.getElementById('reframe-ext-persistent');
+    if (earlyStyle && document.head && earlyStyle.parentElement !== document.head) {
+      document.head.appendChild(earlyStyle);
+      console.log(`[Reframe Ext] Moved persistent <style> tag to <head>`);
+    }
+
+    // Ask background to re-execute all saved JS for this domain (bypasses CSP)
+    try {
+      console.log(`[Reframe Ext] Sending REAPPLY_JS to background worker for JS execution...`);
+      chrome.runtime.sendMessage({ type: 'REAPPLY_JS', domain });
+    } catch (e) {
+      console.warn('[Reframe Ext] Could not request JS re-apply:', e);
     }
   });
 }
 
-// Execute immediately when the content script wakes up
-applySavedOverrides();
+// Apply immediately on load, and then schedule a few delayed passes 
+// to catch React/SPA elements that mount asynchronously after document_idle
+console.log(`[Reframe Ext] Content script loaded. Running initial applyAllChanges()...`);
+applyAllChanges();
+setTimeout(applyAllChanges, 800);
+setTimeout(applyAllChanges, 2000);
+setTimeout(applyAllChanges, 4000);
 
-// --- 3. DYNAMIC DOM EXTRACTION ENGINE (TWO-LAYER) ---
+// --- 2. DYNAMIC DOM EXTRACTION ENGINE (TWO-LAYER) ---
 const SKIP_TAGS = new Set(['script', 'style', 'noscript', 'meta', 'link', 'title', 'head', 'base']);
 
 function isDynamic(cls) {
@@ -130,7 +121,7 @@ function getLayoutCSS(el) {
     if (d === 'grid' || d === 'inline-grid') {
       if (s.gridTemplateColumns && s.gridTemplateColumns !== 'none') {
         let gtc = s.gridTemplateColumns;
-        if (gtc.length > 30) gtc = gtc.slice(0, 30) + '…';
+        if (gtc.length > 30) gtc = gtc.slice(0, 30) + '\u2026';
         parts.push('gtc:' + gtc);
       }
     }
@@ -167,7 +158,7 @@ function getLayoutCSS(el) {
     const bgImg = s.backgroundImage;
     if (bgImg && bgImg !== 'none') {
       let bgI = bgImg;
-      if (bgI.length > 30) bgI = bgI.slice(0, 30) + '…';
+      if (bgI.length > 30) bgI = bgI.slice(0, 30) + '\u2026';
       parts.push('bg-img:' + bgI);
     }
     
@@ -231,7 +222,7 @@ function buildTree(el, depth = 0) {
     textContent = el.innerText || '';
   }
   textContent = textContent.trim().replace(/\s+/g, ' ');
-  if (textContent.length > 40) textContent = textContent.slice(0, 40) + '…';
+  if (textContent.length > 40) textContent = textContent.slice(0, 40) + '\u2026';
   const textStr = textContent ? `["${textContent}"]` : '';
   
   const isMeaningfulSemantics = new Set([
@@ -256,7 +247,7 @@ function buildTree(el, depth = 0) {
     const h = Math.round(rect.height);
     const x = Math.round(rect.left);
     const y = Math.round(rect.top);
-    if (w > 0 && h > 0) geomStr = `[${w}×${h} at ${x},${y}]`;
+    if (w > 0 && h > 0) geomStr = `[${w}\u00d7${h} at ${x},${y}]`;
   } catch(e) {}
   
   const fullLine = `${identityLine} ${geomStr} ${cssStr}`.trim().replace(/\s+/g, ' ');
@@ -289,7 +280,7 @@ function buildTree(el, depth = 0) {
         } else if (seenCounts[fp] === 3) {
           processed.push({ 
             type: 'placeholder-dedup', 
-            text: `... ×${total - 2} more identical siblings (${fp})`,
+            text: `... \u00d7${total - 2} more identical siblings (${fp})`,
             fingerprint: fp,
             count: total - 2
           });
@@ -308,7 +299,7 @@ function buildTree(el, depth = 0) {
         if (processed[i].type === 'element') skippedCount += 1;
         else if (processed[i].type === 'placeholder-dedup') skippedCount += processed[i].count + 1;
       }
-      finalChildren.push({ type: 'placeholder-limit', text: `... ×${skippedCount} more children` });
+      finalChildren.push({ type: 'placeholder-limit', text: `... \u00d7${skippedCount} more children` });
     }
     
     for (const item of finalChildren) {
@@ -396,49 +387,114 @@ function extractDesignTokens() {
   return out;
 }
 
+function extractCSSVariables() {
+  const sheets = [...document.styleSheets];
+  const vars = {};
+  
+  for (const sheet of sheets) {
+    try {
+      const rules = [...sheet.cssRules];
+      for (const rule of rules) {
+        if (rule.selectorText === ':root' || rule.selectorText === 'html') {
+          const style = rule.style;
+          for (let i = 0; i < style.length; i++) {
+            const prop = style[i];
+            if (prop.startsWith('--')) {
+              vars[prop] = style.getPropertyValue(prop).trim();
+            }
+          }
+        }
+      }
+    } catch(e) {}
+  }
+  let out = '';
+  const entries = Object.entries(vars);
+  if (entries.length > 0) {
+    out += `=== CSS VARIABLES ===\n`;
+    entries.slice(0, 50).forEach(([k, v]) => {
+      out += `${k}: ${v}\n`;
+    });
+  }
+  return out;
+}
+
 function getCustomDOMSkeleton() {
   if (!document.body) {
     return '(body element not ready)';
   }
+  const cssVars = extractCSSVariables();
   const designSystem = extractDesignTokens();
   const root = buildTree(document.body, 0);
   if (!root) return '(could not extract DOM skeleton)';
   
   const treeString = serializeTree(root, 0);
   const viewport = `Viewport: ${window.innerWidth}x${window.innerHeight}`;
-  return `${designSystem}\n${viewport}\n=== ENHANCED DOM TREE ===\n${treeString}\n`;
+  return `${cssVars}${designSystem}\n${viewport}\n=== ENHANCED DOM TREE ===\n${treeString}\n`;
 }
 
-// --- 4. MESSAGE LISTENER ---
+// --- 3. MESSAGE LISTENER ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'APPLY_CHANGE') {
-    if (message.css) {
-      injectCSS(message.css, message.index);
-    }
-    sendResponse({ success: true, type: 'CHANGE_APPLIED' });
-  } else if (message.type === 'UNDO_CHANGE') {
-    if (message.isCss) {
-      removeCSS(message.index);
-    }
-    sendResponse({ success: true });
-  } else if (message.type === 'GET_SKELETON') {
+  if (message.type === 'GET_SKELETON') {
     const skeleton = getCustomDOMSkeleton();
-    console.log("Change Extension - Extracted DOM Skeleton:\n", skeleton);
+    console.log("Reframe Extension - Extracted DOM Skeleton:\n", skeleton);
     sendResponse({ success: true, type: 'SKELETON_RESPONSE', skeleton });
   }
   return true; // Keep message channel open for responses
 });
 
-// --- 5. SPA NAVIGATION OBSERVER ---
+// --- 4. SPA NAVIGATION OBSERVER (ROBUST MULTI-LISTENER) ---
 let lastUrl = location.href;
-const observer = new MutationObserver(() => {
+let reapplyTimer = null;
+
+function scheduleReapply() {
+  clearTimeout(reapplyTimer);
+  reapplyTimer = setTimeout(() => {
+    console.log(`[Reframe Ext] 600ms debounce elapsed, triggering applyAllChanges()...`);
+    applyAllChanges();
+  }, 600); // wait for React/SPA to finish rendering
+}
+
+// Method 1 — popstate fires on back/forward navigation
+window.addEventListener('popstate', () => {
   if (location.href !== lastUrl) {
+    console.log(`[Reframe Ext] popstate navigation detected: ${location.href}`);
     lastUrl = location.href;
-    try {
-      chrome.runtime.sendMessage({ type: 'REAPPLY_CHANGES', domain: window.location.hostname });
-    } catch(e) {}
+    scheduleReapply();
   }
 });
+
+// Method 2 — intercept history.pushState
+const originalPushState = history.pushState.bind(history);
+history.pushState = function(...args) {
+  originalPushState(...args);
+  if (location.href !== lastUrl) {
+    console.log(`[Reframe Ext] pushState navigation detected: ${location.href}`);
+    lastUrl = location.href;
+    scheduleReapply();
+  }
+};
+
+// Method 3 — intercept history.replaceState
+const originalReplaceState = history.replaceState.bind(history);
+history.replaceState = function(...args) {
+  originalReplaceState(...args);
+  if (location.href !== lastUrl) {
+    console.log(`[Reframe Ext] replaceState navigation detected: ${location.href}`);
+    lastUrl = location.href;
+    scheduleReapply();
+  }
+};
+
+// Method 4 — MutationObserver as fallback for anything that slips through
+const navigationObserver = new MutationObserver(() => {
+  if (location.href !== lastUrl) {
+    console.log(`[Reframe Ext] MutationObserver URL change detected: ${location.href}`);
+    lastUrl = location.href;
+    scheduleReapply();
+  }
+});
+
 if (document.body) {
-  observer.observe(document.body, { subtree: true, childList: true });
+  console.log(`[Reframe Ext] Robust SPA multi-observer attached`);
+  navigationObserver.observe(document.body, { subtree: true, childList: true });
 }

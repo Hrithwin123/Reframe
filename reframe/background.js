@@ -1,4 +1,4 @@
-// Change Chrome Extension - Background Service Worker
+// Reframe Chrome Extension - Background Service Worker
 
 const BLOCKED_TERMS = [
   'innerHTML',
@@ -55,8 +55,15 @@ Return ONLY valid JSON in this exact format:
   ]
 }`;
 
-const PROMPT_TURN_2_PLANNING = `You are a Senior Frontend Developer in PLANNING mode. Do not write any code yet.
+const PROMPT_TURN_2_PLANNING = `You are a Senior Frontend Developer & UI/UX Designer in PLANNING mode. Do not write any code yet.
 Based on your analysis, create a complete change plan for the user's request.
+
+CRITICAL DESIGN AESTHETICS:
+1. **Use Rich Aesthetics**: The user should be WOWED at first glance. Use best practices in modern web design (e.g., vibrant but harmonious colors, sleek dark modes, glassmorphism, dynamic micro-animations).
+2. **Prioritize Visual Excellence**: Avoid generic colors (plain red, blue, green). Use curated, premium palettes (e.g., tailored HSL colors, smooth gradients). Ensure typography is modern and sleek.
+3. **Use a Dynamic Design**: Interfaces must feel responsive and alive. Plan for hover effects, active states, and smooth transitions on interactive elements.
+4. **Premium Designs**: Make the design feel state-of-the-art. Failure to create a visually stunning layout is UNACCEPTABLE.
+5. **Color Theory & Layered Contrast (CRITICAL)**: Do NOT blindly assign the same color to a container and its contents! You MUST check the parent's background color before assigning text color. If a surface is dark, its text MUST be light. Ensure distinct contrast between layered surfaces (e.g., page background vs card background) so nothing becomes invisible.
 
 Step 2 - Plan only. For each surface identified:
 - What should its new background color be?
@@ -95,9 +102,15 @@ Return ONLY valid JSON in this exact format:
   ]
 }`;
 
-const PROMPT_TURN_3_CODE = `You are a Senior Frontend Developer in CODE GENERATION mode.
-Based on your analysis and plan, now write the complete JavaScript and CSS.
+const PROMPT_TURN_3_CODE = `You are a Senior Frontend Developer & UI/UX Designer in CODE GENERATION mode.
+Based on your analysis and premium design plan, now write the complete JavaScript and CSS.
 
+CRITICAL DESIGN AESTHETICS:
+- Implement the premium design outlined in Step 2.
+- Inject smooth transitions (e.g., 'transition: all 0.2s ease-in-out') on interactive elements.
+- Use box-shadows, subtle gradients, and glassmorphism (backdrop-filter) where appropriate to create depth.
+- **GUARANTEE VISIBILITY**: Ensure perfect text contrast. Never make text the same color as its parent background. Ensure cards and nested surfaces visually separate from the main page background.
+- The final result must look incredibly premium and modern.
 Step 3 - Code only. Rules:
 - Follow the paletteMap exactly, do not deviate from planned colors
 - Address every surface in your changes list
@@ -108,7 +121,17 @@ Step 3 - Code only. Rules:
 - Do not touch preserved elements
 - ALWAYS use !important on your CSS overrides.
 - Use explicit CSS selectors from Turn 1.
-
+- All generated JavaScript MUST be fully idempotent. Use a unique guard ID to prevent double-execution, but ONLY set it to true if the target element exists. Wrap the entire JS block like this:
+  if (!window.__reframeExt_CHANGEID__) {
+    const target = document.querySelector('.target-element');
+    if (target) {
+      window.__reframeExt_CHANGEID__ = true;
+      try {
+        // actual change code here
+      } catch(e) {}
+    }
+  }
+  Replace CHANGEID with a unique string based on what the change does (e.g. darkmode, navbar_bottom, hide_sidebar). This ensures re-running on SPA navigation skips already-applied changes without re-running them unnecessarily, while allowing retries if the page hasn't finished rendering yet.
 Return ONLY valid JSON in this exact format:
 {
   "css": "complete CSS string (e.g. 'body { background: #111 !important; }')",
@@ -122,13 +145,15 @@ Review the code you just generated against your initial analysis.
 
 Step 4 - Review your generated code. Check for:
 - Any surface from your analysis that was NOT addressed in the code?
-- Any text element that sits on a darkened surface but wasn't recolored?
+- **VISIBILITY CHECK (CRITICAL)**: Did you make any text the exact same or similar color to its background? (e.g., dark text on a dark card). If so, fix it immediately so it is readable.
+- Are nested surfaces clearly distinguishable from the page background?
 - Any selector that might not exist or is ambiguous?
 - Any preserved element that was accidentally modified?
 - Any missing hover states on interactive elements?
+- Is the generated JavaScript idempotent? (Running it twice should not duplicate elements or styles)
 
-If the code is perfectly correct, return ready: true.
-If the code missed anything, write the completely fixed CSS and JS and return ready: true.
+If the code is perfectly correct and highly visible, return ready: true.
+If the code missed anything or created visibility issues, write the completely fixed CSS and JS and return ready: true.
 
 Return ONLY valid JSON in this exact format:
 {
@@ -147,7 +172,7 @@ function registerCSPStripperRule() {
     return;
   }
   chrome.declarativeNetRequest.updateSessionRules({
-    removeRuleIds: [1],
+    removeRuleIds: [1, 2],
     addRules: [
       {
         id: 1,
@@ -172,6 +197,20 @@ function registerCSPStripperRule() {
         condition: {
           urlFilter: "*",
           resourceTypes: ["main_frame", "sub_frame"]
+        }
+      },
+      {
+        id: 2,
+        priority: 1,
+        action: {
+          type: "modifyHeaders",
+          requestHeaders: [
+            { header: "Origin", operation: "remove" }
+          ]
+        },
+        condition: {
+          urlFilter: "*11434*",
+          resourceTypes: ["xmlhttprequest", "other"]
         }
       }
     ]
@@ -211,49 +250,113 @@ async function handleMessage(message, sender) {
       return await handleResetSite(message);
     case 'EXECUTE_MAIN_WORLD_JS':
       return await handleExecuteMainWorldJs(message, sender);
-    case 'REAPPLY_CHANGES':
-      return await handleReapplyChanges(message, sender);
+    case 'REAPPLY_JS':
+      return await handleReapplyJS(message, sender);
+    case 'RE_EXECUTE_CHANGE':
+      return await handleReExecuteChange(message, sender);
     default:
       throw new Error(`Unknown message type: ${message.type}`);
   }
 }
 
-async function handleReapplyChanges(message, sender) {
+
+// --- REAPPLY_JS: Called by content.js at document_idle and on SPA navigation ---
+// CSS is already handled by content-early.js. This only handles JS.
+async function handleReapplyJS(message, sender) {
   const { domain } = message;
   const tabId = sender.tab?.id;
   if (!tabId || !domain) return { success: false };
 
+  console.log(`[Reframe Ext Background] Received REAPPLY_JS for domain: ${domain}, tabId: ${tabId}`);
+
   const domainData = await chrome.storage.local.get([domain]);
-  const stack = domainData[domain] || [];
-  
-  for (let i = 0; i < stack.length; i++) {
-    const parsed = stack[i].parsed;
-    if (parsed.css) {
+  const data = domainData[domain];
+  if (!data || Array.isArray(data) || !data.changes || data.changes.length === 0) {
+    console.log(`[Reframe Ext Background] No JS changes to re-apply for ${domain}.`);
+    return { success: true };
+  }
+
+  console.log(`[Reframe Ext Background] Found ${data.changes.length} changes. Iterating over JS...`);
+
+  for (let i = 0; i < data.changes.length; i++) {
+    const change = data.changes[i];
+    if (!change.js) continue;
+    try {
+      console.log(`[Reframe Ext Background] Re-executing JS for change index [${i}] (${change.summary})`);
       await chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        func: (cssCode, idx) => {
-          const id = `change-ext-style-${idx}`;
-          if (!document.getElementById(id)) {
-            const style = document.createElement('style');
-            style.id = id;
-            style.textContent = cssCode;
-            (document.head || document.documentElement).appendChild(style);
+        target: { tabId },
+        world: 'MAIN',
+        func: (code) => {
+          try { 
+            eval(code); 
+            console.log('[Reframe Ext Page Context] Successfully evaluated JS snippet.');
+          } catch (e) { 
+            console.warn('[Reframe Ext Page Context] JS evaluation error:', e); 
           }
         },
-        args: [parsed.css, i]
+        args: [change.js]
       });
-    }
-    if (parsed.code) {
-      await chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        world: 'MAIN',
-        func: (codeString) => {
-          try { eval(codeString); } catch (e) {}
-        },
-        args: [parsed.code]
-      });
+    } catch (e) {
+      console.warn(`[Reframe Ext Background] Failed to executeScript for change [${i}]:`, e);
     }
   }
+  return { success: true };
+}
+
+async function handleReExecuteChange(message, sender) {
+  const { domain, index } = message;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tabId = tab?.id;
+  
+  if (!tabId || !domain) return { success: false, reason: 'No active tab found.' };
+
+  const domainData = await chrome.storage.local.get([domain]);
+  const data = domainData[domain];
+  if (!data || !data.changes || !data.changes[index]) {
+    return { success: false, reason: 'Change not found in storage.' };
+  }
+
+  const change = data.changes[index];
+  console.log(`[Reframe Ext Background] Forcing manual re-execution of change [${index}] (${change.summary})`);
+
+  // Force re-inject CSS just in case
+  if (change.css) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: (cssCode) => {
+          let style = document.getElementById('reframe-ext-persistent');
+          if (style && !style.textContent.includes(cssCode)) {
+            style.textContent += '\n\n' + cssCode;
+          }
+        },
+        args: [change.css]
+      });
+    } catch(e) { console.warn(e); }
+  }
+
+  // Force re-inject JS
+  if (change.js) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        world: 'MAIN',
+        func: (code) => {
+          try { 
+            eval(code); 
+            console.log('[Reframe Ext Page Context] Successfully forced manual re-evaluation of JS snippet.');
+          } catch (e) { 
+            console.warn('[Reframe Ext Page Context] Manual JS evaluation error:', e); 
+          }
+        },
+        args: [change.js]
+      });
+    } catch (e) {
+      console.warn(`[Reframe Ext Background] Failed manual JS executeScript for change [${index}]:`, e);
+      return { success: false, reason: e.message };
+    }
+  }
+
   return { success: true };
 }
 
@@ -283,8 +386,8 @@ async function handleExecuteMainWorldJs({ code }, sender) {
 async function handleGenerateChange({ domain, skeleton, userPrompt, existingChanges }) {
   // Retrieve API Key and Model Name
   const storage = await chrome.storage.local.get(['llm_api_key', 'llm_model_name']);
-  const apiKey = storage.llm_api_key;
-  const modelName = storage.llm_model_name || '';
+  let apiKey = storage.llm_api_key;
+  let modelName = storage.llm_model_name;
 
   if (!apiKey) {
     return { success: false, reason: 'API key is not configured. Please open extension options and save your API key.' };
@@ -299,7 +402,7 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
   let url;
   if (isGroq) url = 'https://api.groq.com/openai/v1/chat/completions';
   else if (isOpenRouter) url = 'https://openrouter.ai/api/v1/chat/completions';
-  else if (isOllama) url = 'http://localhost:11434/v1/chat/completions';
+  else if (isOllama) url = 'http://127.0.0.1:11434/v1/chat/completions';
   else url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   const requestHeaders = {
@@ -309,13 +412,13 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
     requestHeaders['Authorization'] = `Bearer ${apiKey}`;
     if (isOpenRouter) {
       requestHeaders['HTTP-Referer'] = 'https://github.com/Harshith404/Reframe';
-      requestHeaders['X-Title'] = 'Reframe Change Extension';
+      requestHeaders['X-Title'] = 'Reframe Reframe Extension';
     }
   }
 
   let requestBody;
   if (isOAI) {
-    let targetModel = 'llama-3.3-70b-versatile';
+    let targetModel = 'llama-3.3-70b-versatile'; // We can safely use 70b now because the 429 auto-retry handles the limits!
     if (isOpenRouter) targetModel = 'openai/gpt-oss-120b';
     if (modelName) targetModel = modelName; // Override if provided
 
@@ -325,9 +428,13 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userText }
         ],
-        temperature: 0.2,
-        response_format: { type: 'json_object' }
+        temperature: 0.2
       };
+      
+    // Only apply json_object format for native OpenAI/Groq endpoints, as some local Ollama models hang with strict grammar
+    if (!isOllama) {
+      requestBody.response_format = { type: 'json_object' };
+    }
   } else {
     requestBody = {
       system_instruction: { parts: [{ text: systemPrompt }] },
@@ -349,6 +456,26 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
     const errText = await apiResponse.text();
     let errJson;
     try { errJson = JSON.parse(errText); } catch (e) {}
+    
+    // Auto-retry for 429 Rate Limits
+    if (apiResponse.status === 429) {
+      const errMsg = errJson?.error?.message || "";
+      const match = errMsg.match(/try again in ([\d\.]+)s/);
+      let waitTime = 10000; // default 10s
+      if (match && match[1]) {
+        waitTime = Math.ceil(parseFloat(match[1])) * 1000 + 1000; // add 1s buffer
+      }
+      console.warn(`Rate limit hit. Sleeping for ${waitTime/1000}s...`);
+      
+      // Send a UI broadcast if running inside the pipeline
+      try {
+        chrome.runtime.sendMessage({ type: 'PIPELINE_STATUS', step: `Rate limit hit! Waiting ${Math.round(waitTime/1000)}s...` });
+      } catch (e) {}
+
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return await callLLM(apiKey, systemPrompt, userText, modelName); // Recursive retry
+    }
+
     const errMsg = isGroq
       ? (errJson?.error?.message || `Groq API returned status ${apiResponse.status}`)
       : isOpenRouter
@@ -398,22 +525,22 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
 
   try {
     // Turn 1: Analysis
-    broadcastStatus('🔍 Analysing page structure...');
+    broadcastStatus('Analysing page structure...');
     const prompt1 = PROMPT_TURN_1_ANALYSIS.replace('{userPrompt}', userPrompt);
     const analysis = await callLLM(apiKey, prompt1, baseContext, modelName);
     
     // Turn 2: Planning
-    broadcastStatus('📋 Planning changes...');
+    broadcastStatus('Planning changes...');
     const context2 = baseContext + '\n\n=== TURN 1: ANALYSIS ===\n' + JSON.stringify(analysis, null, 2);
     const plan = await callLLM(apiKey, PROMPT_TURN_2_PLANNING, context2, modelName);
 
     // Turn 3: Code Generation
-    broadcastStatus('⚙️ Generating code...');
+    broadcastStatus('Generating code...');
     const context3 = context2 + '\n\n=== TURN 2: PLAN ===\n' + JSON.stringify(plan, null, 2);
     const codeGen = await callLLM(apiKey, PROMPT_TURN_3_CODE, context3, modelName);
 
     // Turn 4: Review
-    broadcastStatus('✅ Reviewing...');
+    broadcastStatus('Reviewing...');
     const context4 = context3 + '\n\n=== TURN 3: GENERATED CODE ===\n' + JSON.stringify(codeGen, null, 2);
     const review = await callLLM(apiKey, PROMPT_TURN_4_REVIEW, context4, modelName);
 
@@ -439,11 +566,6 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
       return { success: false, reason: 'The generated code contained potentially unsafe operations and was blocked.' };
     }
 
-    // Read existing stack length to determine index
-    const domainData = await chrome.storage.local.get([domain]);
-    const stack = domainData[domain] || [];
-    const changeIndex = stack.length;
-
     // Send code live to page
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.id) {
@@ -452,27 +574,24 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
 
     if (finalCss) {
       try {
-        await chrome.tabs.sendMessage(tab.id, { 
-          type: 'APPLY_CHANGE', 
-          css: finalCss,
-          index: changeIndex
-        });
-      } catch (e) {
-        console.warn('Could not message content script, applying CSS manually via Scripting API', e);
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: (cssCode, idx) => {
-            const id = `change-ext-style-${idx}`;
-            let style = document.getElementById(id);
-            if (!style) {
+          func: (cssCode) => {
+            // Append to persistent style tag or create it
+            let style = document.getElementById('reframe-ext-persistent');
+            if (style) {
+              style.textContent += '\n\n' + cssCode;
+            } else {
               style = document.createElement('style');
-              style.id = id;
+              style.id = 'reframe-ext-persistent';
+              style.textContent = cssCode;
               (document.head || document.documentElement).appendChild(style);
             }
-            style.textContent = cssCode;
           },
-          args: [finalCss, changeIndex]
+          args: [finalCss]
         });
+      } catch (e) {
+        console.warn('Failed to inject CSS via scripting API:', e);
       }
     }
 
@@ -485,7 +604,7 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
             try {
               eval(codeString);
             } catch (e) {
-              console.error("Failed to execute generated JS:", e);
+              console.error('Failed to execute generated JS:', e);
             }
           },
           args: [finalJs]
@@ -498,24 +617,30 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
     const hasChanges = (finalJs && finalJs.trim() !== '') || (finalCss && finalCss.trim() !== '');
 
     if (hasChanges) {
-      const changeObject = {
-        summary: review.summary || 'Custom layout adjustment (CoT Pipeline)',
-        code: finalJs,
+      // Save using the persistent format: { changes: [...] }
+      const domainData = await chrome.storage.local.get([domain]);
+      let existing = domainData[domain];
+      if (!existing || Array.isArray(existing)) {
+        existing = { changes: [] };
+      }
+
+      existing.changes.push({
+        id: `change_${Date.now()}`,
+        summary: review.summary || 'Custom layout adjustment',
         css: finalCss,
-        reversalCode: '/* reversal unavailable — reload the page to reset */',
-        reversalAvailable: false,
+        js: finalJs,
+        reversalCss: '',
+        reversalJs: '',
         timestamp: new Date().toISOString(),
         prompt: userPrompt
-      };
+      });
 
-      stack.push(changeObject);
-      await chrome.storage.local.set({ [domain]: stack });
+      await chrome.storage.local.set({ [domain]: existing });
 
       return { 
         success: true, 
-        summary: changeObject.summary, 
+        summary: review.summary || 'Custom layout adjustment', 
         response: review.response || 'Successfully planned and generated changes!',
-        changeIndex: changeIndex,
         hasChanges: true
       };
     } else {
@@ -534,59 +659,44 @@ async function callLLM(apiKey, systemPrompt, userText, modelName) {
 
 async function handleUndoChange({ domain, index }) {
   const domainData = await chrome.storage.local.get([domain]);
-  const stack = domainData[domain] || [];
+  let data = domainData[domain];
+  if (!data || Array.isArray(data)) {
+    data = { changes: [] };
+  }
 
-  if (index < 0 || index >= stack.length) {
+  if (index < 0 || index >= data.changes.length) {
     return { success: false, reason: 'Invalid change index to undo.' };
   }
 
-  const changeToUndo = stack[index];
-  
-  // Remove change from stack
-  stack.splice(index, 1);
-  await chrome.storage.local.set({ [domain]: stack });
+  // Remove the change from the array
+  data.changes.splice(index, 1);
+  await chrome.storage.local.set({ [domain]: data });
 
-  // Apply reversal code to the tab
+  // Rebuild the combined CSS style tag from remaining changes
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab && tab.id) {
-    if (changeToUndo.css) {
-      try {
-        await chrome.tabs.sendMessage(tab.id, { 
-          type: 'UNDO_CHANGE', 
-          index: index,
-          isCss: true
-        });
-      } catch (e) {
-        console.warn('Could not send undo message to content script, falling back to scripting API', e);
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: (idx) => {
-            const style = document.getElementById(`change-ext-style-${idx}`);
-            if (style) style.remove();
-          },
-          args: [index]
-        });
-      }
-    }
+    const allCSS = data.changes
+      .map(c => c.css || '')
+      .filter(Boolean)
+      .join('\n\n');
 
-    if (changeToUndo.reversalCode) {
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          world: 'MAIN',
-          func: (codeString) => {
-            try {
-              eval(codeString);
-            } catch (e) {
-              console.error("Failed to execute reversal code:", e);
-            }
-          },
-          args: [changeToUndo.reversalCode]
-        });
-      } catch (e) {
-        console.error("Failed to execute scripting API reversal:", e);
-      }
-    }
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (css) => {
+        let style = document.getElementById('reframe-ext-persistent');
+        if (css) {
+          if (!style) {
+            style = document.createElement('style');
+            style.id = 'reframe-ext-persistent';
+            (document.head || document.documentElement).appendChild(style);
+          }
+          style.textContent = css;
+        } else if (style) {
+          style.remove();
+        }
+      },
+      args: [allCSS]
+    });
   }
 
   return { success: true };

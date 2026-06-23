@@ -1,11 +1,10 @@
-// Change Chrome Extension - Popup Logic
+// Reframe Chrome Extension - Popup Logic
 
 document.addEventListener('DOMContentLoaded', async () => {
   const activeDomainEl = document.getElementById('active-domain');
   const chatHistory = document.getElementById('chat-history');
   const chatInput = document.getElementById('chat-input');
   const sendBtn = document.getElementById('send-btn');
-  const typingIndicator = document.getElementById('typing-indicator');
   const historyList = document.getElementById('history-list');
   const undoAllBtn = document.getElementById('undo-all-btn');
   const optionsBtn = document.getElementById('options-btn');
@@ -34,6 +33,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'PIPELINE_STATUS') {
+      const statusBubble = document.getElementById('ai-status-bubble');
+      if (statusBubble) {
+        statusBubble.querySelector('.ai-status-text').textContent = message.step;
+      }
+    }
+  });
+
   // Initialize Extension
   async function initialize() {
     try {
@@ -47,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const urlStr = currentTab.url || '';
       
       if (!urlStr || urlStr.startsWith('chrome://') || urlStr.startsWith('chrome-extension://') || urlStr.startsWith('edge://') || urlStr.startsWith('about:') || urlStr.includes('chromewebstore.google.com')) {
-        setSystemDisabled('Change cannot modify browser system, settings, or Web Store pages.');
+        setSystemDisabled('Reframe cannot modify browser system, settings, or Web Store pages.');
         return;
       }
 
@@ -81,15 +89,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     chatInput.disabled = true;
     chatInput.placeholder = 'Cannot adjust this page...';
     sendBtn.disabled = true;
-    addMessage('system', `Change is disabled here: ${reason}`);
+    addMessage('system', `Reframe is disabled here: ${reason}`);
   }
 
   async function loadHistory() {
     if (!currentDomain) return;
 
     chrome.storage.local.get([currentDomain], (result) => {
-      const stack = result[currentDomain] || [];
-      renderHistoryList(stack);
+      let data = result[currentDomain];
+      if (!data || Array.isArray(data)) {
+        data = { changes: [] };
+      }
+      renderHistoryList(data.changes);
     });
   }
 
@@ -128,8 +139,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       undoBtn.textContent = 'Undo';
       undoBtn.addEventListener('click', () => undoChange(index));
 
+      const refreshBtn = document.createElement('button');
+      refreshBtn.className = 'undo-btn';
+      refreshBtn.style.marginLeft = '8px';
+      refreshBtn.textContent = 'Refresh';
+      refreshBtn.title = 'Force re-execute this change on the current page';
+      refreshBtn.addEventListener('click', () => refreshChange(index));
+
+      const actionsRow = document.createElement('div');
+      actionsRow.style.display = 'flex';
+      actionsRow.appendChild(undoBtn);
+      actionsRow.appendChild(refreshBtn);
+
       item.appendChild(content);
-      item.appendChild(undoBtn);
+      item.appendChild(actionsRow);
       historyList.appendChild(item);
     });
 
@@ -188,7 +211,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     chatInput.disabled = true;
     sendBtn.disabled = true;
     addMessage('user', userPrompt);
-    typingIndicator.style.display = 'flex';
+    
+    // Inject AI Status Bubble
+    const statusMsg = document.createElement('div');
+    statusMsg.id = 'ai-status-bubble';
+    statusMsg.className = 'message ai-message ai-status-message';
+    statusMsg.innerHTML = `
+      <div class="ai-status-content">
+        <div class="pipeline-spinner"></div>
+        <span class="ai-status-text">Analysing page structure...</span>
+      </div>
+    `;
+    chatHistory.appendChild(statusMsg);
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
     try {
@@ -203,16 +237,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       } catch (err) {
         console.error('Failed to communicate with content script:', err);
+        const bubble = document.getElementById('ai-status-bubble');
+        if (bubble) bubble.remove();
         addMessage('error', 'Error: Could not extract site structure. Please refresh the page and try again.');
-        typingIndicator.style.display = 'none';
         chatInput.disabled = false;
         return;
       }
 
       // Step 2: Read current stack from storage to supply existing changes context
       const storageData = await chrome.storage.local.get([currentDomain]);
-      const stack = storageData[currentDomain] || [];
-      const existingChanges = stack.map(change => change.summary);
+      let data = storageData[currentDomain];
+      if (!data || Array.isArray(data)) {
+        data = { changes: [] };
+      }
+      const existingChanges = data.changes.map(change => change.summary);
 
       // Step 3: Call background worker to request layout change generation
       chrome.runtime.sendMessage({
@@ -222,7 +260,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         userPrompt,
         existingChanges
       }, (response) => {
-        typingIndicator.style.display = 'none';
+        const bubble = document.getElementById('ai-status-bubble');
+        if (bubble) bubble.remove();
         chatInput.disabled = false;
 
         if (chrome.runtime.lastError) {
@@ -244,7 +283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Send message failure:', err);
       addMessage('error', `Execution failed: ${err.message}`);
-      typingIndicator.style.display = 'none';
+      pipelineStatus.style.display = 'none';
       chatInput.disabled = false;
     }
   }
@@ -272,6 +311,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadHistory();
       } else {
         addMessage('error', response?.reason || 'Failed to undo layout override.');
+        loadHistory();
+      }
+    });
+  }
+
+  async function refreshChange(index) {
+    if (!currentDomain) return;
+
+    const buttons = historyList.querySelectorAll('.undo-btn');
+    buttons.forEach(btn => btn.disabled = true);
+
+    chrome.runtime.sendMessage({
+      type: 'RE_EXECUTE_CHANGE',
+      domain: currentDomain,
+      index
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        addMessage('error', `Refresh failed: ${chrome.runtime.lastError.message}`);
+        loadHistory(); 
+        return;
+      }
+
+      if (response && response.success) {
+        addMessage('system', 'Successfully re-executed change on the current page.');
+        loadHistory();
+      } else {
+        addMessage('error', response?.reason || 'Failed to re-execute change.');
         loadHistory();
       }
     });
