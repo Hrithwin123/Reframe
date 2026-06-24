@@ -55,11 +55,11 @@ So I used Reframe to fix it:
 1. Shrunk the main chat window down to a mobile-width view (because that's how WhatsApp is *meant* to feel).
 2. Took all that newly empty space on the right and told the AI to build a massive floating notepad widget where I can actually draft, edit, and send long messages like a civilized person.
 
-**Before — the unnecessarily wide default:**
+**Before: the unnecessarily wide default:**
 
 ![Current WhatsApp](https://github.com/user-attachments/assets/85ef2787-b6e6-4930-aa72-d415395c2941)
 
-**After — mobile-width chat + floating draft panel:**
+**After: mobile-width chat + floating draft panel:**
 
 https://github.com/user-attachments/assets/9aa229b2-f008-4847-a348-0992365efffb
 
@@ -85,17 +85,17 @@ https://github.com/user-attachments/assets/2a0a9b93-2a9b-47d0-9070-8f6cb391c7d5
 
 Reframe isn't just wrapping an LLM call and slapping `innerHTML` on the page. It's genuinely engineered to handle the chaos of modern web apps:
 
-1. **DOM Skeleton Extraction** — When you open the popup, Reframe extracts a compressed structural skeleton of the page (not the full DOM, that would murder your token budget) and feeds it to the LLM as context.
-2. **Multi-Turn AI Pipeline** — The LLM doesn't just yolo one response. It goes through 4 structured turns: analyze the page → plan a design strategy → generate the code → self-review for visibility issues. Each turn has strict JSON schemas so the AI can't wander off and start philosophizing instead of writing CSS (yes, this actually happened during development).
-3. **CSP Bypass via Service Worker** — Modern websites use Content Security Policies to block inline scripts. Reframe sidesteps this entirely by routing all JavaScript execution through Chrome's `chrome.scripting.executeScript` API in the background service worker, injecting directly into the page's MAIN world.
-4. **SPA Persistence** — Single Page Apps (React, Next.js, etc.) love to tear down and rebuild the DOM on every navigation. Reframe fights back with a multi-listener hydration system (`popstate`, `pushState`, `replaceState`, `MutationObserver`) that instantly re-injects your saved CSS/JS the millisecond the site tries to wipe it.
-5. **Idempotent JS Guards** — Every generated JavaScript block is wrapped in a unique execution guard (`window.__reframeExt_CHANGEID__`) so re-running the same code on SPA navigation doesn't duplicate elements or stack event listeners.
+1. **DOM Skeleton Extraction**: When you open the popup, Reframe extracts a compressed structural skeleton of the page (not the full DOM, that would murder your token budget) and feeds it to the LLM as context.
+2. **Multi-Turn AI Pipeline**: The LLM doesn't just yolo one response. It goes through 4 structured turns: analyze the page → plan a design strategy → generate the code → self-review for visibility issues. Each turn has strict JSON schemas so the AI can't wander off and start philosophizing instead of writing CSS (yes, this actually happened during development).
+3. **CSP Bypass via Service Worker**: Modern websites use Content Security Policies to block inline scripts. Reframe sidesteps this entirely by routing all JavaScript execution through Chrome's `chrome.scripting.executeScript` API in the background service worker, injecting directly into the page's MAIN world.
+4. **SPA Persistence**: Single Page Apps (React, Next.js, etc.) love to tear down and rebuild the DOM on every navigation. Reframe fights back with a multi-listener hydration system (`popstate`, `pushState`, `replaceState`, `MutationObserver`) that instantly re-injects your saved CSS/JS the millisecond the site tries to wipe it.
+5. **Idempotent JS Guards**: Every generated JavaScript block is wrapped in a unique execution guard (`window.__reframeExt_CHANGEID__`) so re-running the same code on SPA navigation doesn't duplicate elements or stack event listeners.
 
 ---
 
 ## <img src="https://api.iconify.design/lucide:users.svg?color=%23a855f7" width="28" align="top" /> Contributions Needed (Urgently) (Please) (I'm Begging)
 
-This project is fully open-source and there's a *ridiculous* amount of cool stuff that could be built on top of it. If any of these excite you, please open a PR — I will mass-produce gratitude:
+This project is fully open-source and there's a *ridiculous* amount of cool stuff that could be built on top of it. If any of these excite you, please open a PR, I will mass-produce gratitude:
 
 | Feature | Description | Difficulty |
 |---|---|---|

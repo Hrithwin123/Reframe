@@ -2,7 +2,7 @@
 
 First off, thank you for considering contributing to Reframe! Whether you're fixing a bug, adding a new feature, or tweaking the AI prompts, your help is incredibly appreciated.
 
-We want to make this project as welcoming as possible, especially if this is your first time contributing to open source. You don't need to be a senior engineer to help out—if you know how to talk to an AI, you can improve this extension!
+We want to make this project as welcoming as possible, especially if this is your first time contributing to open source. You don't need to be a senior engineer to help out. If you know how to talk to an AI, you can improve this extension!
 
 ## 🛠️ How the Extension Works (The Short Version)
 
