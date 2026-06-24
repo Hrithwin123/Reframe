@@ -48,7 +48,7 @@ So I used Reframe to fix it:
 
 **Watch Reframe completely reshape WhatsApp Web:**
 
-<video src="./assets/whatsapp.mp4" width="100%" controls></video>
+https://github.com/Hrithwin123/Reframe/blob/main/assets/whatsapp.mp4
 
 ---
 
@@ -64,7 +64,7 @@ Did I tell my friend? Eventually. Was it hilarious watching their confusion when
 
 **Demo Video:**
 
-<video src="./assets/restaurant.mp4" width="100%" controls></video>
+https://github.com/Hrithwin123/Reframe/blob/main/assets/restaurant.mp4
 
 ---
 
