@@ -46,13 +46,9 @@ So I used Reframe to fix it:
 1. Shrunk the main chat window down to a mobile-width view (because that's how WhatsApp is *meant* to feel).
 2. Took all that newly empty space on the right and told the AI to build a massive floating notepad widget where I can actually draft, edit, and send long messages like a civilized person.
 
-**Before — the unnecessarily wide default:**
+**Watch Reframe completely reshape WhatsApp Web:**
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/85ef2787-b6e6-4930-aa72-d415395c2941" />
-
-**After — mobile-width chat + floating draft panel:**
-
-https://github.com/user-attachments/assets/9aa229b2-f008-4847-a348-0992365efffb
+<video src="assets/github%20recording.mp4" width="100%" controls></video>
 
 ---
 
@@ -68,9 +64,7 @@ Did I tell my friend? Eventually. Was it hilarious watching their confusion when
 
 **Demo Video:**
 
-<div align="center">
-  <video src="https://github.com/user-attachments/assets/2a0a9b93-2a9b-47d0-9070-8f6cb391c7d5" width="100%" controls></video>
-</div>
+<video src="assets/restaurant.mp4" width="100%" controls></video>
 
 ---
 
