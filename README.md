@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/4bb6ce84-96f8-4ed8-8536-c04ca61874e6
+
 <div align="center">
   <img src="assets/banner_cropped.png" alt="Reframe Hero Banner" width="100%" />
   
@@ -78,6 +82,10 @@ Did I tell my friend? Eventually. Was it hilarious watching their confusion when
 **Demo Video:**
 
 https://github.com/user-attachments/assets/2a0a9b93-2a9b-47d0-9070-8f6cb391c7d5
+
+
+
+https://github.com/user-attachments/assets/31b23a7d-1ec6-4b54-8b6c-6fcf891f6221
 
 ---
 
