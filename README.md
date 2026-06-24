@@ -106,6 +106,7 @@ This project is fully open-source and there's a *ridiculous* amount of cool stuf
 | **Cloud Sync** | Sync your customizations across all your Chrome instances via an external backend | Medium |
 | **Visual Element Picker** | Point-and-click mode where you click an element on screen, and Reframe feeds *that specific node* to the LLM for surgical edits | Hard |
 | **Auto-Healing Selectors** | When a website updates its class names and breaks your saved override, the AI automatically detects the breakage and repairs the selectors | Hard |
+| **Wayback Time Machine Mode** | Fetch a website's historical layout from the Wayback Machine API and prompt the AI to rewrite the current CSS to perfectly mimic its retro design | Hard |
 
 ---
 
