@@ -62,7 +62,7 @@ So I used Reframe to fix it:
 
 **After: mobile-width chat + floating draft panel:**
 
-https://github.com/user-attachments/assets/9aa229b2-f008-4847-a348-0992365efffb
+<video src="https://github.com/user-attachments/assets/9aa229b2-f008-4847-a348-0992365efffb" width="100%" controls playsinline autoplay muted loop></video>
 
 ---
 
@@ -78,7 +78,7 @@ Did I tell my friend? Eventually. Was it hilarious watching their confusion when
 
 **Demo Video:**
 
-https://github.com/user-attachments/assets/38f7c27c-529e-4f7b-9b14-16124b415b74
+<video src="https://github.com/user-attachments/assets/38f7c27c-529e-4f7b-9b14-16124b415b74" width="100%" controls playsinline autoplay muted loop></video>
 
 ---
 
