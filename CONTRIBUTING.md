@@ -15,25 +15,23 @@ To get your bearings, here is exactly how Reframe operates:
 
 ---
 
-## 🚀 Getting Started (Step-by-Step for Beginners)
+## 🚀 Getting Started (The "Vibe Coding" Way)
 
-If you're new to GitHub, don't worry. Here is the exact terminal flow to get your own version of Reframe running locally.
+Nobody manually runs `git clone` anymore. If you are using an AI coding agent (like Cursor, Windsurf, or Gemini), just copy and paste this exact prompt into your agent to get fully set up in 5 seconds:
 
-### 1. Fork and Clone
-1. Click the **"Fork"** button at the top right of this repository to copy it to your own GitHub account.
-2. Open your terminal and clone your copy:
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/Reframe.git
-   cd Reframe
-   ```
+> **Copy & Paste this to your AI Assistant:**
+> 
+> *"I want to contribute to the Reframe Chrome extension. Please clone the repository from `https://github.com/Hrithwin123/Reframe.git` into my current directory. Once cloned, create a new branch called `my-new-feature`. Next, briefly read the `reframe/background.js` and `reframe/popup.js` files so you understand the architecture, specifically how it uses the Chrome Extensions API to bypass CSP and how the 'Design System Prompt' works for generating CSS/JS. Finally, let me know when you're ready and ask me what feature I want to build!"*
 
-### 2. Create a Branch
-Always create a new branch for your work:
-```bash
-git checkout -b my-awesome-new-feature
-```
+### The "Old School" Manual Way
+If you prefer doing things by hand:
+1. Fork the repository
+2. `git clone https://github.com/YOUR-USERNAME/Reframe.git`
+3. `cd Reframe`
+4. `git checkout -b my-awesome-new-feature`
 
-### 3. Load the Extension in Chrome
+### Loading the Extension in Chrome
+Regardless of how you cloned it:
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Turn on **"Developer mode"** in the top right corner.
 3. Click **"Load unpacked"** and select the `reframe` folder you just cloned.
