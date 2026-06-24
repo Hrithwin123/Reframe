@@ -119,7 +119,9 @@ Step 3 - Code only. Rules:
 - Every selector must be null-checked if using JS, but prioritize CSS <style> injection.
 - Include hover states for every interactive element
 - Do not touch preserved elements
-- ALWAYS use !important on your CSS overrides.
+- ALWAYS use !important on every single CSS rule you write to ensure they take precedence.
+- ONLY modify existing DOM nodes. Do NOT create or hallucinate new elements.
+- NEVER generate <iframe> tags under any circumstances.
 - Use explicit CSS selectors from Turn 1.
 - All generated JavaScript MUST be fully idempotent. Use a unique guard ID to prevent double-execution, but ONLY set it to true if the target element exists. Wrap the entire JS block like this:
   if (!window.__reframeExt_CHANGEID__) {
