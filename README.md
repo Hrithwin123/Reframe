@@ -48,11 +48,11 @@ So I used Reframe to fix it:
 
 **Before — the unnecessarily wide default:**
 
-![Current WhatsApp](placeholder_for_current_whatsapp_screenshot)
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/85ef2787-b6e6-4930-aa72-d415395c2941" />
 
 **After — mobile-width chat + floating draft panel:**
 
-![Modified WhatsApp](placeholder_for_modified_whatsapp_screenshot)
+https://github.com/user-attachments/assets/9aa229b2-f008-4847-a348-0992365efffb
 
 ---
 
@@ -64,11 +64,11 @@ I opened their site, typed *"add a dark mode toggle button in the top right corn
 
 Did I tell my friend? Eventually. Was it hilarious watching their confusion when I sent them a screenshot of *their own website* with a feature they never built? Absolutely.
 
-**Live Site:** [Link](placeholder_for_link)
+**Live Site:** [Link](https://onlinefoodorderingsystem.vercel.app/)
 
 **Demo Video:**
 
-![Dark Mode Toggle Demo](placeholder_for_dark_mode_video)
+https://github.com/user-attachments/assets/2a0a9b93-2a9b-47d0-9070-8f6cb391c7d5
 
 ---
 
