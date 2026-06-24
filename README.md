@@ -68,7 +68,9 @@ Did I tell my friend? Eventually. Was it hilarious watching their confusion when
 
 **Demo Video:**
 
-<video src="https://github.com/user-attachments/assets/2a0a9b93-2a9b-47d0-9070-8f6cb391c7d5" width="100%" controls></video>
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/2a0a9b93-2a9b-47d0-9070-8f6cb391c7d5" width="100%" controls></video>
+</div>
 
 ---
 
