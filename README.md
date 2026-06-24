@@ -1,12 +1,19 @@
-<h1 align="center">REFRAME</h1>
+<div align="center">
+  <img src="assets/banner.png" alt="Reframe Hero Banner" width="100%" />
+  
+  <br />
+  <br />
 
-<p align="center">
-  <i>Why stop at vibe coding your own website when you can vibe code other people's sites too</i>
-</p>
+  <img src="https://img.shields.io/badge/Chrome_Web_Store-Pending_Review-a855f7?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
+  <img src="https://img.shields.io/badge/License-MIT-0ea5e9?style=for-the-badge" alt="License" />
+  <img src="https://img.shields.io/badge/Contributions-Welcome-22c55e?style=for-the-badge" alt="Contributions" />
+
+  <h3><i>Why stop at vibe coding your own website when you can vibe code other people's sites too</i></h3>
+</div>
 
 ---
 
-## The Problem (The web wasn't built for you specifically, but it could be)
+## <img src="https://api.iconify.design/lucide:zap.svg?color=%23a855f7" width="28" align="top" /> The Problem (The web wasn't built for you specifically, but it could be)
 
 Here's the thing nobody talks about: no website is perfect for everyone. The developer built it for *their* idea of a user, and buddy, that user is not you.
 
@@ -17,11 +24,12 @@ Here's the thing nobody talks about: no website is perfect for everyone. The dev
 And what are your options?
 Send the developer a passive-aggressive feature request that'll sit in their backlog for years.
 
-Yeah, no. There had to be a better way.
+> [!NOTE]  
+> Yeah, no. There had to be a better way.
 
 ---
 
-## So... what is Reframe?
+## <img src="https://api.iconify.design/lucide:rocket.svg?color=%230ea5e9" width="28" align="top" /> So... what is Reframe?
 
 **Reframe** is a Chrome extension that lets you redesign any website on the internet, *YESSS ANYYY*, by just describing what you want in plain English.
 
@@ -29,11 +37,12 @@ That's it. That's the whole pitch.
 
 You type something like *"make the background dark and move the sidebar to the bottom"* and Reframe's AI figures out the DOM structure, generates perfectly scoped CSS/JS, bypasses Content Security Policies, and permanently saves your changes even across SPA navigations where the site tries to fight back by re-rendering everything.
 
-Think of it as a universal remote control for the internet's UI, except instead of pressing buttons, you just complain about the layout in natural language and it fixes itself.
+> [!TIP]
+> Think of it as a universal remote control for the internet's UI, except instead of pressing buttons, you just complain about the layout in natural language and it fixes itself.
 
 ---
 
-## Showcases
+## <img src="https://api.iconify.design/lucide:image.svg?color=%23a855f7" width="28" align="top" /> Showcases
 
 ### Making WhatsApp Web Actually Usable
 
@@ -72,24 +81,19 @@ https://github.com/user-attachments/assets/2a0a9b93-2a9b-47d0-9070-8f6cb391c7d5
 
 ---
 
-## How It Works (for the nerds)
+## <img src="https://api.iconify.design/lucide:cpu.svg?color=%230ea5e9" width="28" align="top" /> How It Works (for the nerds)
 
 Reframe isn't just wrapping an LLM call and slapping `innerHTML` on the page. It's genuinely engineered to handle the chaos of modern web apps:
 
 1. **DOM Skeleton Extraction** — When you open the popup, Reframe extracts a compressed structural skeleton of the page (not the full DOM, that would murder your token budget) and feeds it to the LLM as context.
-
 2. **Multi-Turn AI Pipeline** — The LLM doesn't just yolo one response. It goes through 4 structured turns: analyze the page → plan a design strategy → generate the code → self-review for visibility issues. Each turn has strict JSON schemas so the AI can't wander off and start philosophizing instead of writing CSS (yes, this actually happened during development).
-
 3. **CSP Bypass via Service Worker** — Modern websites use Content Security Policies to block inline scripts. Reframe sidesteps this entirely by routing all JavaScript execution through Chrome's `chrome.scripting.executeScript` API in the background service worker, injecting directly into the page's MAIN world.
-
 4. **SPA Persistence** — Single Page Apps (React, Next.js, etc.) love to tear down and rebuild the DOM on every navigation. Reframe fights back with a multi-listener hydration system (`popstate`, `pushState`, `replaceState`, `MutationObserver`) that instantly re-injects your saved CSS/JS the millisecond the site tries to wipe it.
-
 5. **Idempotent JS Guards** — Every generated JavaScript block is wrapped in a unique execution guard (`window.__reframeExt_CHANGEID__`) so re-running the same code on SPA navigation doesn't duplicate elements or stack event listeners.
 
 ---
 
-
-## Contributions Needed (Urgently) (Please) (I'm Begging)
+## <img src="https://api.iconify.design/lucide:users.svg?color=%23a855f7" width="28" align="top" /> Contributions Needed (Urgently) (Please) (I'm Begging)
 
 This project is fully open-source and there's a *ridiculous* amount of cool stuff that could be built on top of it. If any of these excite you, please open a PR — I will mass-produce gratitude:
 
@@ -104,12 +108,15 @@ This project is fully open-source and there's a *ridiculous* amount of cool stuf
 
 ---
 
-## Setup
+## <img src="https://api.iconify.design/lucide:terminal.svg?color=%230ea5e9" width="28" align="top" /> Setup
+
+> [!IMPORTANT]
+> **We are currently working on deploying and publishing Reframe to the Chrome Web Store for a seamless 1-click install!** In the meantime, you can easily install it locally as a developer extension below.
 
 **Prerequisites:** You'll need a free API key from any one of these providers:
-- [Google Gemini](https://aistudio.google.com/apikey) (free tier available)
-- [Groq](https://console.groq.com/keys) (free tier available)
-- [OpenRouter](https://openrouter.ai/settings/keys) (pay-as-you-go)
+- <img src="https://img.shields.io/badge/Google_Gemini-a855f7?style=flat-square&logo=googlegemini&logoColor=white" /> [(free tier available)](https://aistudio.google.com/apikey)
+- <img src="https://img.shields.io/badge/Groq-0ea5e9?style=flat-square&logo=groq&logoColor=white" /> [(free tier available)](https://console.groq.com/keys)
+- <img src="https://img.shields.io/badge/OpenRouter-525252?style=flat-square" /> [(pay-as-you-go)](https://openrouter.ai/settings/keys)
 
 **Installation:**
 ```bash
